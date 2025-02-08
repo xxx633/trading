@@ -1,23 +1,22 @@
+from flask import Flask
 import requests
 import pandas as pd
 import time
-from flask import Flask, jsonify
+from threading import Thread
 
+# 初始化 Flask 应用
 app = Flask(__name__)
 
-# =============== 1. 配置 API ===============
+# ==================== 交易相关代码 ====================
 API_KEY = "fekK4lw5TMmW9PXQ"
 CLIENT_IDENTIFIER = "vittoxiong@icloud.com"
 PASSWORD = "Password2@123"
+BASE_URL = "https://demo-api-capital.backend-capital.com/api/v1/"
+EPIC = "XRPUSD"
+TRADE_SIZE = 100
+TIMEFRAME = "MINUTE"
 
-BASE_URL = "https://demo-api-capital.backend-capital.com/api/v1/"  # 模拟账户
-# BASE_URL = "https://api-capital.backend-capital.com/api/v1/"  # 真实账户
-
-EPIC = "XRPUSD"  # 交易标的：Ripple/USD
-TRADE_SIZE = 100  # 每次交易的 XRP 数量
-TIMEFRAME = "MINUTE"  # 1 分钟 K 线
-
-# =============== 2. 登录 ===============
+# 1️⃣ *登录 API*
 def login():
     url = BASE_URL + "session"
     headers = {"X-CAP-API-KEY": API_KEY, "Content-Type": "application/json"}
@@ -31,7 +30,7 @@ def login():
         print("❌ 登录失败:", response.json())
         exit()
 
-# =============== 3. 获取市场数据 ===============
+# 2️⃣ *获取市场数据*
 def get_market_data(cst, security_token):
     url = BASE_URL + f"prices/{EPIC}?resolution={TIMEFRAME}&max=50"
     headers = {"CST": cst, "X-SECURITY-TOKEN": security_token, "Content-Type": "application/json"}
@@ -47,11 +46,11 @@ def get_market_data(cst, security_token):
         print("❌ 获取市场数据失败:", response.json())
         return None
 
-# =============== 4. 计算 EMA ===============
+# 3️⃣ *计算 EMA*
 def calculate_ema(df, period):
     return df["close"].ewm(span=period, adjust=False).mean()
 
-# =============== 5. 交易 ===============
+# 4️⃣ *执行交易*
 def place_order(cst, security_token, direction):
     url = BASE_URL + "positions"
     headers = {"CST": cst, "X-SECURITY-TOKEN": security_token, "Content-Type": "application/json"}
@@ -73,7 +72,7 @@ def place_order(cst, security_token, direction):
     else:
         print(f"❌ {direction} 失败:", response.json())  
 
-# =============== 6. 交易策略 ===============
+# 5️⃣ *交易策略*
 def trading_strategy(cst, security_token):
     df = get_market_data(cst, security_token)  # 获取 1 分钟 K 线数据
     if df is None or len(df) < 21:
@@ -86,7 +85,7 @@ def trading_strategy(cst, security_token):
     last_row = df.iloc[-1]  # 取最新一根 K 线
     prev_row = df.iloc[-2]  # 取上一根 K 线
     
-    print(f"🔍 当前 EMA9: {last_row['EMA9']:.4f}, EMA20: {last_row['EMA20']:.4f}")
+    print(f"🔍 当前 EMA9: {last_row['EMA9']:.5f}, EMA20: {last_row['EMA20']:.5f}")
 
     if prev_row["EMA9"] < prev_row["EMA20"] and last_row["EMA9"] > last_row["EMA20"]:
         print("💹 交易信号：买入")
@@ -99,15 +98,22 @@ def trading_strategy(cst, security_token):
     else:
         print("📉 没有交易信号，继续等待...")
 
-# =============== 7. 健康检查路由 ===============
+# ==================== Koyeb 健康检查 ====================
 @app.route('/health', methods=['GET'])
 def health_check():
-    return "OK", 200
+    return "Healthy", 200  # Koyeb 访问这个端口，返回 200 OK
 
-# =============== 8. 启动交易的路由 ===============
-@app.route('/start-trading', methods=['GET'])
-def start_trading():
+# ==================== 运行交易 ====================
+if __name__ == "__main__":
+    # 启动 Flask 服务器（健康检查）
+    def run_flask():
+        app.run(host="0.0.0.0", port=8000)
+    
+    flask_thread = Thread(target=run_flask)
+    flask_thread.start()
+
     try:
+        # 启动交易程序
         cst, security_token = login()
         while True:
             print("\n📊 检查交易信号...")
@@ -115,8 +121,4 @@ def start_trading():
             print("⏳ 等待 1 分钟...")
             time.sleep(60)
     except KeyboardInterrupt:
-        return jsonify({"message": "交易终止，退出程序"}), 200
-    return jsonify({"message": "交易开始"}), 200
-
-if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=8000)
+        print("\n🛑 交易终止，退出程序")
