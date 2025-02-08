@@ -1,6 +1,9 @@
 import requests
-import pandas as pd 
+import pandas as pd
 import time
+from flask import Flask, jsonify
+
+app = Flask(__name__)
 
 # =============== 1. 配置 API ===============
 API_KEY = "fekK4lw5TMmW9PXQ"
@@ -96,8 +99,14 @@ def trading_strategy(cst, security_token):
     else:
         print("📉 没有交易信号，继续等待...")
 
-# =============== 7. 运行交易 ===============
-if __name__ == "__main__":
+# =============== 7. 健康检查路由 ===============
+@app.route('/health', methods=['GET'])
+def health_check():
+    return "OK", 200
+
+# =============== 8. 启动交易的路由 ===============
+@app.route('/start-trading', methods=['GET'])
+def start_trading():
     try:
         cst, security_token = login()
         while True:
@@ -105,6 +114,9 @@ if __name__ == "__main__":
             trading_strategy(cst, security_token)
             print("⏳ 等待 1 分钟...")
             time.sleep(60)
-
     except KeyboardInterrupt:
-        print("\n🛑 交易终止，退出程序")
+        return jsonify({"message": "交易终止，退出程序"}), 200
+    return jsonify({"message": "交易开始"}), 200
+
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=8000)
