@@ -1,5 +1,7 @@
 venv/
 
+trading2/
+
 __pycache__/
 *.pyc
 

@@ -1,16 +1,17 @@
 from threading import Thread
-import time
+import asyncio
 from server import run_server  # 从 server.py 导入 run_server 函数
 from trading import login, trading_strategy
 
-def run_trading():
+async def run_trading():
     cst, security_token = login()
     while True:
         try:
             print("\n📊 检查交易信号...")
             trading_strategy(cst, security_token)
-            print("⏳ 等待 5 分钟...")
-            time.sleep(300)  # 5 分钟
+            print("⏳ 等待 16 分钟...")
+            print("----------------------")
+            await asyncio.sleep(960)  # 16 分钟（异步等待）
         except KeyboardInterrupt:
             print("\n🛑 交易中断，退出程序")
             break
@@ -22,8 +23,8 @@ if __name__ == "__main__":
         flask_thread.daemon = True  # 使 Flask 线程在主线程退出时自动结束
         flask_thread.start()
 
-        # 启动交易
-        run_trading()
+        # 启动交易（确保异步运行）
+        asyncio.run(run_trading())
 
     except KeyboardInterrupt:
         print("\n🛑 主程序被手动中断，退出程序")
