@@ -1,21 +1,48 @@
 from threading import Thread
 import asyncio
+from datetime import datetime, timedelta
 from server import run_server  # 从 server.py 导入 run_server 函数
-from trading import login, trading_strategy,check_session
+from trading import login, trading_strategy
 
-async def run_trading():
-    cst, security_token = login()
+# 获取下一个小时的1分钟
+def get_next_minute():
+    now = datetime.now()
+    # 获取下一个小时的 1 分钟
+    next_minute = now.replace(minute=1, second=0, microsecond=0)
+    
+    # 如果当前时间已经过了 XX:01（例如 12:02, 12:10），则需要调整为下一个小时的 1 分钟
+    if now >= next_minute:
+        next_minute = next_minute + timedelta(hours=1)
+    
+    return next_minute
+
+async def run_trading():   
     while True:
         try:
+            cst, security_token = login()
+            # 获取下一个小时的1分钟
+            next_minute = get_next_minute()
+            wait_seconds = (next_minute - datetime.now()).total_seconds()
+            wait_minutes = wait_seconds // 60  # 计算等待的分钟数
+
+            # 打印当前时间和等待的时间
+            current_time = datetime.now().strftime("%H:%M")  # 获取当前时间的格式为小时:分钟:秒
+            next_minute_time = next_minute.strftime("%H:%M")  # 获取下一个1分钟的时间，去掉日期
+            print(f"⏰当前时间: {current_time}\n⏳ 等待 {int(wait_minutes)} 分钟到 {next_minute_time} 执行交易...")
+
+            # 等待直到下一个小时的第一分钟
+            await asyncio.sleep(wait_seconds)
+            
+            # 运行交易策略
             print("\n📊 检查交易信号...")
             trading_strategy(cst, security_token)
-            print("⏳ 等待 11 分钟...")
+            print(f"⏳ 等待下一个小时...")  # 可以调整为稍微改动后的信息
             print("----------------------")
-            await asyncio.sleep(630)  # 15 分钟（异步等待）
-            check_session(cst, security_token)
+
         except KeyboardInterrupt:
             print("\n🛑 交易中断，退出程序")
             break
+
 
 if __name__ == "__main__":
     try:
