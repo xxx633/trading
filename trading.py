@@ -12,7 +12,7 @@ BASE_URL = "https://demo-api-capital.backend-capital.com/api/v1/"
 # 交易配置
 EPIC = "XRPUSD"  # 交易品种
 TRADE_SIZE = 100  # 每笔交易大小
-TIMEFRAME = "HOUR"  # 时间周期（小时级别）
+TIMEFRAME = "HOUR"  # 时间周期（分钟级别）
 
 # 登录 Capital.com
 def login():
@@ -58,7 +58,7 @@ def compute_indicators(df):
     return df
 
 # 下单函数
-def place_order(cst, security_token, direction):
+def place_order(cst, security_token, direction, reason):
     url = BASE_URL + "positions"
     headers = {"CST": cst, "X-SECURITY-TOKEN": security_token, "Content-Type": "application/json"}
     
@@ -71,20 +71,15 @@ def place_order(cst, security_token, direction):
     }
     
     response = requests.post(url, json=payload, headers=headers)
-    print(f"📤 交易请求: {direction} {TRADE_SIZE} {EPIC}")
-    print("📩 API 响应:", response.json())
 
     if response.status_code == 200:
-        print(f"✅ 成功 {direction} {TRADE_SIZE} {EPIC}")
+        print(f"✅ 成功 {direction} {TRADE_SIZE} {EPIC}，原因: {reason}")
     else:
         print(f"❌ {direction} 失败:", response.json())
 
 # 交易策略
 def trading_strategy(cst, security_token):
-    # 初始化仓位管理
-    positions = []  # 用列表来存储所有仓位，允许多个相同触发条件的订单
-    
-    # 触发ID与平仓ID映射关系
+    positions = []  # 存储所有仓位，允许多个 RSI 订单
     trigger_map = {
         'id1': 'id4',  # RSI多 -> RSI空
         'id2': 'id5',  # EMA多 -> EMA空
@@ -126,17 +121,18 @@ def trading_strategy(cst, security_token):
     # 处理开仓信号
     for signal in signals:
         direction, trigger_id = signal
-        # 如果还没有开的RSI多单，则可以开一个多仓
+        reason = "RSI" if "id1" in trigger_id or "id4" in trigger_id else \
+                 "EMA" if "id2" in trigger_id or "id5" in trigger_id else "MACD"
+        
         if trigger_id == 'id1':  # RSI多
-            if len([p for p in positions if p['trigger_id'] == 'id1']) < 3:  # 最多开3个RSI多单
-                place_order(cst, security_token, direction)
-                positions.append({'trigger_id': trigger_id, 'direction': direction, 'size': TRADE_SIZE, 'stop_loss_id': trigger_map[trigger_id]})
-        elif trigger_id != 'id1':  # 对于其他情况，只开1个仓位
-            existing_position = any(p['trigger_id'] == trigger_id for p in positions)
-            if not existing_position:
-                place_order(cst, security_token, direction)
-                positions.append({'trigger_id': trigger_id, 'direction': direction, 'size': TRADE_SIZE, 'stop_loss_id': trigger_map[trigger_id]})
-    
+            if len([p for p in positions if p['trigger_id'] == 'id1']) < 3:
+                place_order(cst, security_token, direction, reason)
+                positions.append({'trigger_id': trigger_id, 'direction': direction, 'stop_loss_id': trigger_map[trigger_id]})
+        elif trigger_id != 'id1':
+            if not any(p['trigger_id'] == trigger_id for p in positions):
+                place_order(cst, security_token, direction, reason)
+                positions.append({'trigger_id': trigger_id, 'direction': direction, 'stop_loss_id': trigger_map[trigger_id]})
+
     # 处理平仓信号
     for position in list(positions):
         trigger_id = position['trigger_id']
@@ -144,27 +140,14 @@ def trading_strategy(cst, security_token):
         for signal in signals:
             direction, signal_trigger_id = signal
             if signal_trigger_id == exit_trigger_id:
-                # RSI 的止盈，只平 RSI 多仓
-                if trigger_id == 'id1':  # RSI 多仓
-                    # 找出所有 RSI 多仓并一起平仓
-                    for p in positions:
-                        if p['trigger_id'] == 'id1':
-                            place_order(cst, security_token, 'SELL' if p['direction'] == 'BUY' else 'BUY')
-                            positions.remove(p)  # 删除平仓的仓位
-                    # 平仓后立即反向开 1 个新的 RSI 空仓
-                    place_order(cst, security_token, 'SELL')  # RSI 空仓
-                    positions.append({'trigger_id': 'id4', 'direction': 'SELL', 'size': TRADE_SIZE, 'stop_loss_id': trigger_map['id4']})
-                # EMA 和 MACD 的平仓，独立处理
-                elif trigger_id == 'id2':  # EMA 多仓
-                    place_order(cst, security_token, 'SELL' if position['direction'] == 'BUY' else 'BUY')
-                    positions.remove(position)  # 删除平仓的仓位
-                    # 平仓后立即反向开 1 个新的 EMA 空仓
-                    place_order(cst, security_token, 'SELL')  # EMA 空仓
-                    positions.append({'trigger_id': 'id5', 'direction': 'SELL', 'size': TRADE_SIZE, 'stop_loss_id': trigger_map['id5']})
-                elif trigger_id == 'id3':  # MACD 多仓
-                    place_order(cst, security_token, 'SELL' if position['direction'] == 'BUY' else 'BUY')
-                    positions.remove(position)  # 删除平仓的仓位
-                    # 平仓后立即反向开 1 个新的 MACD 空仓
-                    place_order(cst, security_token, 'SELL')  # MACD 空仓
-                    positions.append({'trigger_id': 'id6', 'direction': 'SELL', 'size': TRADE_SIZE, 'stop_loss_id': trigger_map['id6']})
-                break  # 平仓后退出检查
+                reason = "RSI" if "id1" in trigger_id or "id4" in trigger_id else \
+                         "EMA" if "id2" in trigger_id or "id5" in trigger_id else "MACD"
+
+                place_order(cst, security_token, 'SELL' if position['direction'] == 'BUY' else 'BUY', reason)
+                positions.remove(position)
+                
+                new_direction = 'SELL' if position['direction'] == 'BUY' else 'BUY'
+                place_order(cst, security_token, new_direction, reason)
+                positions.append({'trigger_id': trigger_map[trigger_id], 'direction': new_direction, 'stop_loss_id': trigger_map[trigger_map[trigger_id]]})
+                
+                break
