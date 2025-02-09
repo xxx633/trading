@@ -9,9 +9,9 @@ async def run_trading():
         try:
             print("\n📊 检查交易信号...")
             trading_strategy(cst, security_token)
-            print("⏳ 等待 9 分钟...")
+            print("⏳ 等待 11 分钟...")
             print("----------------------")
-            await asyncio.sleep(500)  # 9 分钟（异步等待）
+            await asyncio.sleep(630)  # 15 分钟（异步等待）
         except KeyboardInterrupt:
             print("\n🛑 交易中断，退出程序")
             break

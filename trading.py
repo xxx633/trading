@@ -22,7 +22,17 @@ def login():
         else:
             print("❌ 登录失败:", response.json())
             exit()
-   
+   # =============== 检查会话是否有效 ===============
+def check_session(cst, security_token):
+    url = BASE_URL + "session"
+    headers = {"CST": cst, "X-SECURITY-TOKEN": security_token, "Content-Type": "application/json"}
+    
+    response = requests.get(url, headers=headers)
+    if response.status_code == 401:  # 401 表示会话过期
+        print("🔄 会话过期，重新登录...")
+        return login()
+    
+    return cst, security_token
 
 def get_market_data(cst, security_token):
         url = BASE_URL + f"prices/{EPIC}?resolution={TIMEFRAME}&max=50"
