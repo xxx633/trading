@@ -1,7 +1,7 @@
 from threading import Thread
 import asyncio
 from server import run_server  # 从 server.py 导入 run_server 函数
-from trading import login, trading_strategy
+from trading import login, trading_strategy,check_session
 
 async def run_trading():
     cst, security_token = login()
@@ -12,6 +12,7 @@ async def run_trading():
             print("⏳ 等待 11 分钟...")
             print("----------------------")
             await asyncio.sleep(630)  # 15 分钟（异步等待）
+            check_session(cst, security_token)
         except KeyboardInterrupt:
             print("\n🛑 交易中断，退出程序")
             break
