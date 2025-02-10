@@ -1,67 +1,32 @@
 import requests
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
+from config import get_market_data,compute_indicators,BASE_URL,EPIC,TRADE_SIZE,TIMEFRAME
 import time
 
-# Capital.com API 配置
-API_KEY = "fekK4lw5TMmW9PXQ"
-CLIENT_IDENTIFIER = "vittoxiong@icloud.com"
-PASSWORD = "Password2@123"
-BASE_URL = "https://demo-api-capital.backend-capital.com/api/v1/"
 
-# 交易配置
-EPIC = "XRPUSD"  # 交易品种
-TRADE_SIZE = 100  # 每笔交易大小
-TIMEFRAME = "HOUR"  # 时间周期（分钟级别）
+MAX_RSI_POSITIONS = 3
 
-# 登录 Capital.com
-def login():
-    url = BASE_URL + "session"
-    headers = {"X-CAP-API-KEY": API_KEY, "Content-Type": "application/json"}
-    payload = {"identifier": CLIENT_IDENTIFIER, "password": PASSWORD, "encryptedPassword": False}
-    
-    response = requests.post(url, json=payload, headers=headers)
-    if response.status_code == 200:
-        print("✅ 登录成功！")
-        return response.headers["CST"], response.headers["X-SECURITY-TOKEN"]
-    else:
-        print("❌ 登录失败:", response.json())
-        exit()
+# ======== 仓位记录结构 ========
+deal_positions = {
+    "ema": {
+        "buy": None,  # {dealReference, dealId, direction, size, openPrice, timestamp}
+        "sell": None
+    },
+    "macd": {
+        "buy": None,
+        "sell": None
+    },
+    "rsi": {
+        "buy": [],  # 允许最多MAX_RSI_POSITIONS个多单
+        "sell": []  # 允许最多MAX_RSI_POSITIONS个空单
+    }
+}
 
-# 获取市场数据
-def get_market_data(cst, security_token):
-    url = BASE_URL + f"prices/{EPIC}?resolution={TIMEFRAME}&max=50"
-    headers = {"CST": cst, "X-SECURITY-TOKEN": security_token, "Content-Type": "application/json"}
-    
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        data = response.json()["prices"]
-        df = pd.DataFrame(data)
-        df["timestamp"] = pd.to_datetime(df["snapshotTime"])
-        df["close"] = df["closePrice"].apply(lambda x: x["bid"])
-        return df[["timestamp", "close"]].set_index("timestamp")
-    else:
-        print("❌ 获取市场数据失败:", response.json())
-        return None
-
-# 计算技术指标：EMA, MACD, RSI
-def compute_indicators(df):
-    df['ema9'] = df['close'].ewm(span=9, adjust=False).mean()
-    df['ema21'] = df['close'].ewm(span=21, adjust=False).mean()
-
-    df['rsi'] = 100 - (100 / (1 + (df['close'].diff().clip(lower=0).rolling(window=14).mean() / 
-                                   df['close'].diff().clip(upper=0).rolling(window=14).mean().abs())))
-
-    df['macd_line'] = df['close'].ewm(span=12, adjust=False).mean() - df['close'].ewm(span=26, adjust=False).mean()
-    df['macd_signal'] = df['macd_line'].ewm(span=9, adjust=False).mean()
-
-    return df
-
-# 下单函数
-def place_order(cst, security_token, direction, reason):
+# ======== 开仓函数 ========
+def place_order(cst, security_token, direction, reason, strategy):
     url = BASE_URL + "positions"
     headers = {"CST": cst, "X-SECURITY-TOKEN": security_token, "Content-Type": "application/json"}
-    
     payload = {
         "epic": EPIC,
         "direction": direction,
@@ -71,86 +36,186 @@ def place_order(cst, security_token, direction, reason):
     }
     
     response = requests.post(url, json=payload, headers=headers)
-
-    if response.status_code == 200:
-        print(f"✅ 成功 {direction} {TRADE_SIZE} {EPIC}，原因: {reason}")
-    else:
-        print(f"❌ {direction} 失败:", response.json())
-
-# 交易策略
-def trading_strategy(cst, security_token):
-    positions = []  # 存储所有仓位
-    trigger_map = {
-        'id1': 'id4',  # RSI多 -> RSI空
-        'id2': 'id5',  # EMA多 -> EMA空
-        'id3': 'id6',  # MACD多 -> MACD空
-        'id4': 'id1',  # RSI空 -> RSI多
-        'id5': 'id2',  # EMA空 -> EMA多
-        'id6': 'id3'   # MACD空 -> MACD多
-    }
     
-    # 获取市场数据
+    # 打印响应的原始内容，帮助调试
+    print(f"API 响应: {response.status_code} - {response.text}")
+    
+    if response.status_code == 200:
+        try:
+            # 尝试解析响应 JSON
+            deal_reference = response.json().get("dealReference")
+            if deal_reference:
+                time.sleep(1)  # 等待订单确认
+                deal_info = confirm_order(cst, security_token, deal_reference)
+                if deal_info:
+                    record_position(strategy, direction, deal_info)
+                    print(f"✅ 成功 {direction} {TRADE_SIZE} {EPIC}，原因: {reason}")
+        except ValueError:
+            print("❌ 响应内容不是有效的 JSON:", response.text)
+    else:
+        print(f"❌ {direction} 失败: 状态码 {response.status_code}，响应内容: {response.text}")
+
+# ======== 订单确认并记录仓位 ========
+def confirm_order(cst, security_token, deal_reference):
+    url = BASE_URL + f"confirms/{deal_reference}"
+    headers = {"CST": cst, "X-SECURITY-TOKEN": security_token, "Content-Type": "application/json"}
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        deal_info = response.json()
+        return {
+            "dealReference": deal_reference,
+            "dealId": deal_info.get("dealId"),
+            "direction": deal_info.get("direction"),
+            "size": deal_info.get("size"),
+            "openPrice": deal_info.get("level"),
+            "timestamp": datetime.now().isoformat()
+        }
+    return None
+
+# ======== 记录仓位信息 ========
+def record_position(strategy, direction, deal_info):
+    if strategy == "rsi":
+        if direction == "BUY":
+            if len(deal_positions["rsi"]["buy"]) < MAX_RSI_POSITIONS:
+                deal_positions["rsi"]["buy"].append(deal_info)
+        else:
+            if len(deal_positions["rsi"]["sell"]) < MAX_RSI_POSITIONS:
+                deal_positions["rsi"]["sell"].append(deal_info)
+    else:
+        deal_positions[strategy][direction.lower()] = deal_info
+
+
+def get_current_position(cst, security_token, strategy, direction):
+    url = BASE_URL + "positions"
+    headers = {"CST": cst, "X-SECURITY-TOKEN": security_token, "Content-Type": "application/json"}
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        positions = response.json().get('positions', [])
+        
+        # 打印出所有仓位的详细信息，方便调试
+        print("当前仓位信息:", positions)
+        
+        for item in positions:
+            pos = item.get('position', {})
+            market = item.get('market', {})
+            if market.get('epic') == EPIC and pos.get('direction') == direction:
+                return {
+                    "dealId": pos.get('dealId'),
+                    "direction": pos.get('direction'),
+                    "size": pos.get('size'),
+                    "openPrice": pos.get('level'),
+                    "timestamp": pos.get('createdDate')
+                }
+    else:
+        print(f"❌ 获取持仓信息失败:", response.json())
+    return None
+
+
+def close_position(cst, security_token, strategy, direction):
+    # 获取当前仓位
+    position = get_current_position(cst, security_token, strategy, direction)
+
+    if strategy == "rsi":
+        # 处理RSI策略的多仓位
+        position_key = direction.lower()
+        if position:
+            # 如果找到仓位，平仓
+            deal_id = position.get('dealId')
+            if not deal_id:
+                print(f"❌ 未找到 {strategy} {direction} 仓位的 dealId")
+                return False
+            
+            url = BASE_URL + f"positions/{deal_id}"
+            headers = {"CST": cst, "X-SECURITY-TOKEN": security_token, "Content-Type": "application/json"}
+            response = requests.delete(url, headers=headers)
+            
+            if response.status_code == 200:
+                print(f"✅ 成功平仓 {strategy} {direction} 仓位，dealId: {deal_id}")
+                # 移除仓位（FIFO，最早开的仓位）
+                deal_positions["rsi"][position_key].pop(0)  # 从仓位记录中移除
+                return True
+            else:
+                print(f"❌ 平仓失败 {strategy} {direction}: {response.json()}")
+                return False
+        else:
+            print(f"⚠️ 无 {strategy} {direction} 仓位可平")
+            return False
+
+    else:
+        # 处理普通策略（EMA、MACD）的单仓位
+        position_key = direction.lower()
+        if position:
+            # 如果找到仓位，平仓
+            deal_id = position.get('dealId')
+            if not deal_id:
+                print(f"❌ 未找到 {strategy} {direction} 仓位的 dealId")
+                return False
+            
+            url = BASE_URL + f"positions/{deal_id}"
+            headers = {"CST": cst, "X-SECURITY-TOKEN": security_token, "Content-Type": "application/json"}
+            response = requests.delete(url, headers=headers)
+            
+            if response.status_code == 200:
+                print(f"✅ 成功平仓 {strategy} {direction} 仓位，dealId: {deal_id}")
+                deal_positions[strategy][position_key] = None  # 更新仓位记录
+                return True
+            else:
+                print(f"❌ 平仓失败 {strategy} {direction}: {response.text}")
+        else:
+            print(f"⚠️ 无 {strategy} {direction} 仓位可平")
+    return False
+
+
+# ======== 交易策略函数 ========
+def trading_strategy(cst, security_token):
     df = get_market_data(cst, security_token)
     if df is None:
         return
-
-    # 计算技术指标
-    df = compute_indicators(df)
     
-    # 获取最新K线数据
+    df = compute_indicators(df)
     current = df.iloc[-1]
     prev = df.iloc[-2] if len(df) > 1 else current
-    
-    # 检查交易信号
-    signals = []
+
+    # EMA策略
+    if current['ema9'] > current['ema21'] and prev['ema9'] <= prev['ema21']:
+        if deal_positions["ema"]["sell"]:  # 先平空仓
+            close_position(cst, security_token, "ema", "SELL")
+        if not deal_positions["ema"]["buy"]:  # 避免重复开仓
+            place_order(cst, security_token, "BUY", "EMA金叉", "ema")
+            
+    elif current['ema9'] < current['ema21'] and prev['ema9'] >= prev['ema21']:
+        if deal_positions["ema"]["buy"]:  # 先平多仓
+            close_position(cst, security_token, "ema", "BUY")
+        if not deal_positions["ema"]["sell"]:  # 避免重复开仓
+            place_order(cst, security_token, "SELL", "EMA死叉", "ema")
+
+    # MACD策略
+    if current['macd_line'] > current['macd_signal'] and prev['macd_line'] <= prev['macd_signal']:
+        # 金叉出现时
+        if deal_positions["macd"]["sell"]:  # 先平空仓
+            close_position(cst, security_token, "macd", "SELL")
+        if not deal_positions["macd"]["buy"]:  # 开多仓
+            place_order(cst, security_token, "BUY", "MACD金叉", "macd")
+            
+    elif current['macd_line'] < current['macd_signal'] and prev['macd_line'] >= prev['macd_signal']:
+        # 死叉出现时
+        if deal_positions["macd"]["buy"]:  # 先平多仓
+            close_position(cst, security_token, "macd", "BUY")
+        if not deal_positions["macd"]["sell"]:  # 开空仓
+            place_order(cst, security_token, "SELL", "MACD死叉", "macd")
+
+    # RSI策略（优化仓位管理）
     if current['rsi'] < 25:
-        signals.append(('BUY', 'id1'))  # RSI多
-    if current['rsi'] > 75:
-        signals.append(('SELL', 'id4'))  # RSI空
-    
-    if (current['ema9'] > current['ema21']) and (prev['ema9'] <= prev['ema21']):
-        signals.append(('BUY', 'id2'))  # EMA金叉
-    if (current['ema9'] < current['ema21']) and (prev['ema9'] >= prev['ema21']):
-        signals.append(('SELL', 'id5'))  # EMA死叉
-    
-    if (current['macd_line'] > current['macd_signal']) and (prev['macd_line'] <= prev['macd_signal']):
-        signals.append(('BUY', 'id3'))  # MACD金叉
-    if (current['macd_line'] < current['macd_signal']) and (prev['macd_line'] >= prev['macd_signal']):
-        signals.append(('SELL', 'id6'))  # MACD死叉
-    
-    # 处理开仓信号
-    for signal in signals:
-        direction, trigger_id = signal
-        reason = "RSI" if "id1" in trigger_id or "id4" in trigger_id else \
-                 "EMA" if "id2" in trigger_id or "id5" in trigger_id else "MACD"
-        
-        # 检查是否已存在相同策略的仓位
-        if trigger_id in ['id2', 'id3']:  # 只有 EMA 和 MACD 策略需要排他性管理
-            # 检查当前是否已经有 EMA 或 MACD 的仓位
-            if any(p['trigger_id'] in ['id2', 'id3'] for p in positions):
-                print(f"❌ 已经有 {reason} 仓位，跳过开仓信号: {signal}")
-                continue  # 如果已经有仓位，跳过这个信号
-        
-        # 开仓信号
-        if len([p for p in positions if p['trigger_id'] == trigger_id]) < 3:
-            place_order(cst, security_token, direction, reason)
-            positions.append({'trigger_id': trigger_id, 'direction': direction, 'stop_loss_id': trigger_map[trigger_id]})
-
-    # 处理平仓信号
-    for position in list(positions):
-        trigger_id = position['trigger_id']
-        exit_trigger_id = position['stop_loss_id']
-        for signal in signals:
-            direction, signal_trigger_id = signal
-            if signal_trigger_id == exit_trigger_id:
-                reason = "RSI" if "id1" in trigger_id or "id4" in trigger_id else \
-                         "EMA" if "id2" in trigger_id or "id5" in trigger_id else "MACD"
-
-                place_order(cst, security_token, 'SELL' if position['direction'] == 'BUY' else 'BUY', reason)
-                positions.remove(position)
-                
-                new_direction = 'SELL' if position['direction'] == 'BUY' else 'BUY'
-                place_order(cst, security_token, new_direction, reason)
-                positions.append({'trigger_id': trigger_map[trigger_id], 'direction': new_direction, 'stop_loss_id': trigger_map[trigger_map[trigger_id]]})
-                
-                break
+        # 超卖时平空仓开多仓
+        for _ in deal_positions["rsi"]["sell"][:]:  # 遍历副本用于修改原列表
+            close_position(cst, security_token, "rsi", "SELL")
+        if len(deal_positions["rsi"]["buy"]) < MAX_RSI_POSITIONS:
+            place_order(cst, security_token, "BUY", "RSI超卖", "rsi")
+            
+    elif current['rsi'] > 75:
+        # 超买时平多仓开空仓
+        for _ in deal_positions["rsi"]["buy"][:]:
+            close_position(cst, security_token, "rsi", "BUY")
+        if len(deal_positions["rsi"]["sell"]) < MAX_RSI_POSITIONS:
+            place_order(cst, security_token, "SELL", "RSI超买", "rsi")
