@@ -79,7 +79,7 @@ def place_order(cst, security_token, direction, reason):
 
 # 交易策略
 def trading_strategy(cst, security_token):
-    positions = []  # 存储所有仓位，允许多个 RSI 订单
+    positions = []  # 存储所有仓位
     trigger_map = {
         'id1': 'id4',  # RSI多 -> RSI空
         'id2': 'id5',  # EMA多 -> EMA空
@@ -124,14 +124,17 @@ def trading_strategy(cst, security_token):
         reason = "RSI" if "id1" in trigger_id or "id4" in trigger_id else \
                  "EMA" if "id2" in trigger_id or "id5" in trigger_id else "MACD"
         
-        if trigger_id == 'id1':  # RSI多
-            if len([p for p in positions if p['trigger_id'] == 'id1']) < 3:
-                place_order(cst, security_token, direction, reason)
-                positions.append({'trigger_id': trigger_id, 'direction': direction, 'stop_loss_id': trigger_map[trigger_id]})
-        elif trigger_id != 'id1':
-            if not any(p['trigger_id'] == trigger_id for p in positions):
-                place_order(cst, security_token, direction, reason)
-                positions.append({'trigger_id': trigger_id, 'direction': direction, 'stop_loss_id': trigger_map[trigger_id]})
+        # 检查是否已存在相同策略的仓位
+        if trigger_id in ['id2', 'id3']:  # 只有 EMA 和 MACD 策略需要排他性管理
+            # 检查当前是否已经有 EMA 或 MACD 的仓位
+            if any(p['trigger_id'] in ['id2', 'id3'] for p in positions):
+                print(f"❌ 已经有 {reason} 仓位，跳过开仓信号: {signal}")
+                continue  # 如果已经有仓位，跳过这个信号
+        
+        # 开仓信号
+        if len([p for p in positions if p['trigger_id'] == trigger_id]) < 3:
+            place_order(cst, security_token, direction, reason)
+            positions.append({'trigger_id': trigger_id, 'direction': direction, 'stop_loss_id': trigger_map[trigger_id]})
 
     # 处理平仓信号
     for position in list(positions):

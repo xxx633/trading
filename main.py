@@ -1,3 +1,4 @@
+# 主程序
 from threading import Thread
 import asyncio
 from datetime import datetime, timedelta
@@ -21,7 +22,6 @@ async def run_trading():
     
     while True:
         try:
-            cst, security_token = login()
 
             # 获取下一个小时的1分钟
             next_minute = get_next_minute()
@@ -36,6 +36,8 @@ async def run_trading():
             # 等待直到下一个小时的第一分钟
             await asyncio.sleep(wait_seconds)
             
+            cst, security_token = login()
+
             # 运行交易策略
             print("\n📊 检查交易条件...")
             trading_strategy(cst, security_token)
@@ -62,3 +64,6 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:
         print("\n🛑 主程序被手动中断，退出程序")
+
+
+
