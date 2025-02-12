@@ -11,7 +11,7 @@ from config import *
 
 # 全局配置
 EPIC = "XRPUSD"        # 交易品种
-RESOLUTION = "MINUTE"  # 交易周期
+RESOLUTION = "HOUR"  # 交易周期
 RISK_PERCENT = 1       # 单笔风险比例（账户余额的1%）
 ATR_PERIOD = 14        # ATR周期
 STOP_MULTIPLIER = 1.5  # 止损倍数
