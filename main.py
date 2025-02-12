@@ -3,14 +3,14 @@ from threading import Thread
 import asyncio
 from datetime import datetime,timedelta
 from server import run_server  # Flask 服务器
-from trading import trading_strategy
+from strategy import *
 from config import login
 
-# 获取下一个小时的1分钟
+# 获取下一个小时的6分钟
 def get_next_minute():
     now = datetime.now()
-    # 获取下一个小时的 1 分钟
-    next_minute = now.replace(minute=1, second=0, microsecond=0)
+    # 获取下一个小时的 6 分钟
+    next_minute = now.replace(minute=6, second=0, microsecond=0)
     
     # 如果当前时间已经过了 XX:01（例如 12:02, 12:10），则需要调整为下一个小时的 1 分钟
     if now >= next_minute:
@@ -23,29 +23,23 @@ async def run_trading():
     
     while True:
         try:
-
+        
             # 获取下一个小时的1分钟
             next_minute = get_next_minute()
             wait_seconds = (next_minute - datetime.now()).total_seconds()
-            wait_minutes = wait_seconds // 60  # 计算等待的分钟数
 
-            # 打印当前时间和等待的时间
-            current_time = datetime.now().strftime("%H:%M")  # 获取当前时间的格式为小时:分钟
-            next_minute_time = next_minute.strftime("%H:%M")  # 获取下一个1分钟的时间，去掉日期
-            print(f"⏰当前时间: {current_time}\n⏳ 等待 {int(wait_minutes)} 分钟到 {next_minute_time} 执行第{trade_count + 1}次交易...")
-
-            # 等待直到下一个小时的第一分钟
+            # 等待直到下一个小时的第6分钟
             await asyncio.sleep(wait_seconds)
             
+            # 登录并获取 CST 和 X-SECURITY-TOKEN
             cst, security_token = login()
 
             # 运行交易策略
-            print("\n📊 检查交易条件...")
-            trading_strategy(cst, security_token)
-            print(f"⏳ 等待下一个小时...")  # 可以调整为稍微改动后的信息
-            print("----------------------")
-            
-            # 更新交易次数
+            #rsi_ema_macd(cst, security_token)
+            #ema_trend(cst, security_token)
+            mta(cst, security_token)
+        
+            print(f"⏳ 等待执行第{trade_count + 1}次交易交易")
             trade_count += 1
 
         except KeyboardInterrupt:
@@ -67,14 +61,13 @@ if __name__ == "__main__":
         print("\n🛑 主程序被手动中断，退出程序")
 
 
-""""
-#测试程序
+
+"""
 from threading import Thread
 import asyncio
-from datetime import datetime
 from server import run_server  # Flask 服务器
-from trading import trading_strategy
 from config import login
+from strategy import *
 
 async def run_trading():
     trade_count = 0  # 初始化交易次数计数器
@@ -84,11 +77,15 @@ async def run_trading():
             
             while True:        
                 # 运行交易策略
-                trading_strategy(cst, security_token)
-                
-                print(f"⏳ 等待 1 分钟后执行第{trade_count + 1}次交易交易...\n----------------------")
-                
-                # 等待 60 秒再执行下一次
+                #普通
+                #ema_trend(cst, security_token)
+                mta(cst, security_token)
+
+                #对冲
+                #rsi_ema_macd(cst, security_token)
+
+                print(f"⏳ 等待 1 分钟后执行第{trade_count + 1}次交易...\n----------------------")
+                #等待下一次执行
                 await asyncio.sleep(60)
 
                 # 更新交易次数
@@ -110,4 +107,5 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:
         print("\n🛑 主程序被手动中断，退出程序")
+
 """
