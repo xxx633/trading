@@ -3,38 +3,41 @@ import pandas as pd
 import numpy as np
 import sys
 import os
+import time
 from datetime import datetime
-
 # 添加项目根目录到系统路径
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from config import *
 
 # 全局配置
 EPIC = "XRPUSD"        # 交易品种
-RESOLUTION = "HOUR"  # 交易周期
-RISK_PERCENT = 1       # 单笔风险比例（账户余额的1%）
+RESOLUTION = "HOUR"    # 交易周期
 ATR_PERIOD = 14        # ATR周期
 STOP_MULTIPLIER = 1.5  # 止损倍数
-PROFIT_RATIO = 2       # 盈亏比
 
+"""
+#可以update order
 class TradingState:
-    """交易状态管理类"""
     def __init__(self):
-        self.position = None  # 当前持仓方向（BUY/SELL）
+        self.position = {
+            "direction": None,  # 当前持仓方向（BUY/SELL）
+            "dealId": None,
+            "size": None
+        }
+        
         self.entry_price = None  # 入场价格
-        self.stop_loss = None  # 止损价格
-        self.initial_tp = None  # 初始止盈价格
-        self.trailing_tp = None  # 动态止盈价格
-        self.highest = None  # 多单最高价
-        self.lowest = None  # 空单最低价
-
+        self.stop_loss = None    # 止损价格
+        self.initial_tp = 0      # 初始止盈价格
+        self.trailing_tp = 0     # 动态止盈价格
+        self.highest = -1        # 多单最高价
+        self.lowest = 1000       # 空单最低价
+        
     def reset(self):
-        """重置交易状态"""
         self.__init__()
 
 # 实例化交易状态
 trade_state = TradingState()
-
+"""
 def calculate_indicators(df):
     """计算技术指标"""
     # 50 EMA
@@ -50,8 +53,8 @@ def calculate_indicators(df):
     delta = df["close"].diff()
     gain = delta.where(delta > 0, 0)
     loss = -delta.where(delta < 0, 0)
-    avg_gain = gain.ewm(alpha=1 / 14, adjust=False).mean()
-    avg_loss = loss.ewm(alpha=1 / 14, adjust=False).mean()
+    avg_gain = gain.ewm(alpha=1/14, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1/14, adjust=False).mean()
     rs = avg_gain / avg_loss
     df["rsi"] = 100 - (100 / (1 + rs))
 
@@ -65,26 +68,22 @@ def calculate_indicators(df):
 
     return df
 
-def calculate_position_size(current_price, atr_value, account_balance):
+def calculate_position_size(current_price, account_balance):
     """根据风险比例计算头寸规模"""
-    min_size=1
-    risk_amount = account_balance * RISK_PERCENT / 100
-    dollar_risk = atr_value * current_price * STOP_MULTIPLIER
-    contract_size = risk_amount / dollar_risk
+    risk_amount = account_balance * 0.8
+    contract_size = risk_amount / round(current_price, 1)
 
-    # 确保头寸规模不小于最小交易规模
-    if contract_size < min_size:
-        print(f"⚠️ 计算的头寸规模 {contract_size} 小于最小交易规模 {min_size}，已调整为 {min_size}")
-        return min_size
+    if contract_size < 1:
+        print(f"⚠️ 计算的头寸规模 {contract_size} 小于最小交易规模 1")
+        return 1
     
-    return round(contract_size, 2)
+    return round(contract_size)
 
 def generate_signal(df):
     """生成交易信号"""
     last_row = df.iloc[-1]
     prev_row = df.iloc[-2]
 
-    # 做多条件
     long_condition = (
         (last_row["close"] > last_row["ema50"]) and
         (last_row["rsi"] >= 50) and
@@ -92,7 +91,6 @@ def generate_signal(df):
         (last_row["macd"] > last_row["signal"])
     )
 
-    # 做空条件
     short_condition = (
         (last_row["close"] < last_row["ema50"]) and
         (last_row["rsi"] <= 50) and
@@ -106,44 +104,40 @@ def generate_signal(df):
         return "SELL"
     return None
 
-# ======== 交易执行 ========
-def execute_trade(direction, cst, token,df):
+def execute_trade(direction, cst, token, df):
     """执行交易订单"""
-
     current_atr = df["atr"].iloc[-1]
     current_price = df["close"].iloc[-1]
 
-    # 获取账户余额
     account = get_account_balance(cst, token)
     if not account:
         return
 
-    # 计算头寸规模
-    size = calculate_position_size(current_price, current_atr, account["balance"])
+    size = calculate_position_size(current_price, account["balance"])
     if size <= 0:
         return
     
-    # 设置止损止盈
     if direction == "BUY":
-        stop_loss = current_price - current_atr * STOP_MULTIPLIER
-        initial_tp = current_price + current_atr * STOP_MULTIPLIER * PROFIT_RATIO
+        #stop_loss = current_price - 0.024 - current_atr * STOP_MULTIPLIER
+        #stop_loss = False
+        initial_tp = current_price + 0.012 + current_atr * STOP_MULTIPLIER * 1.3
     else:
-        stop_loss = current_price + current_atr * STOP_MULTIPLIER
-        initial_tp = current_price - current_atr * STOP_MULTIPLIER * PROFIT_RATIO
+        stop_loss = current_price + 0.024 + current_atr * STOP_MULTIPLIER
+        initial_tp = current_price - 0.012 - current_atr * STOP_MULTIPLIER * 1.3
 
-    # 创建订单
     order = {
         "epic": EPIC,
         "direction": direction,
         "size": size,
         "orderType": "MARKET",
-        "stopDistance": round(stop_loss, 2),
-        "profitDistance": round(initial_tp, 2),
-        "currencyCode": account["currency"],
-        "guaranteedStop": False
+        #"stopLevel": round(stop_loss, 3),
+        "profitLevel": round(initial_tp, 3),
+        "guaranteedStop": False,
+        "oco":True 
     }
+    if direction == "SELL":
+        order["stopLevel"] = round(stop_loss, 3)
 
-    # 发送订单请求
     response = requests.post(
         f"{BASE_URL}positions",
         headers={"CST": cst, "X-SECURITY-TOKEN": token},
@@ -152,93 +146,132 @@ def execute_trade(direction, cst, token,df):
 
     if response.status_code == 200:
         position_data = response.json()
+        deal_reference = position_data.get("dealReference")
+
+        if not deal_reference:
+            print("❌ 订单失败: 未返回 dealReference")
+            return
+
+        deal_id = get_deal_id(deal_reference, cst, token)
+        if not deal_id:
+            print("❌ 订单失败: 无法获取 dealId")
+            return
+        """
         trade_state.position = {
             "direction": direction,
-            "dealId": position_data["dealId"],
+            "dealId": deal_id,
             "size": size
         }
+        
         trade_state.entry_price = current_price
         trade_state.stop_loss = stop_loss
         trade_state.initial_tp = initial_tp
         trade_state.trailing_tp = initial_tp
         trade_state.highest = current_price if direction == "BUY" else None
         trade_state.lowest = current_price if direction == "SELL" else None
-        print(f"✅ {direction}订单成功 | 数量: {size} | 止损: {stop_loss:.2f} | 初始止盈: {initial_tp:.2f}")
+        """
+        if direction == "BUY":
+            print(f"✅ {direction} 数量: {size} | 买入价: {current_price+0.01:.2f} | 止盈: {initial_tp:.2f}")
+        else:
+            print(f"✅ {direction} 数量: {size} | 买出价: {current_price-0.01:.2f} | 止损: {stop_loss:.2f} | 止盈: {initial_tp:.2f}")
     else:
-        print(f"❌ 订单失败: {response.text}")
+        print(f"❌ 订单失败: {response.status_code} - {response.text}")
 
-def check_exit_conditions(cst, token,df):
-    """检查退出条件"""
-    if not trade_state.position:
+"""
+def check_exit_conditions(cst, token, df):
+    if not trade_state.position or not trade_state.position["dealId"]:
         return
 
     current_price = df["close"].iloc[-1]
     current_atr = df["atr"].iloc[-1]
 
-    # 更新动态止盈
-    if trade_state.position == "BUY":
+    if trade_state.position["direction"] == "BUY":
         trade_state.highest = max(trade_state.highest, current_price)
         trade_state.trailing_tp = trade_state.highest - current_atr * STOP_MULTIPLIER
         final_tp = max(trade_state.initial_tp, trade_state.trailing_tp)
-    else:
-        trade_state.lowest = min(trade_state.lowest, current_price)
-        trade_state.trailing_tp = trade_state.lowest + current_atr * STOP_MULTIPLIER
-        final_tp = min(trade_state.initial_tp, trade_state.trailing_tp)
-
-    # 退出条件判断
-    exit_reason = None
-    if trade_state.position == "BUY":
         if current_price <= trade_state.stop_loss:
             exit_reason = "触发止损"
         elif current_price >= final_tp:
             exit_reason = "达到止盈"
-    elif trade_state.position == "SELL":
+        else:
+            exit_reason = None
+    elif trade_state.position["direction"] == "SELL":
+        trade_state.lowest = min(trade_state.lowest, current_price)
+        trade_state.trailing_tp = trade_state.lowest + current_atr * STOP_MULTIPLIER
+        final_tp = min(trade_state.initial_tp, trade_state.trailing_tp)
         if current_price >= trade_state.stop_loss:
             exit_reason = "触发止损"
         elif current_price <= final_tp:
             exit_reason = "达到止盈"
+        else:
+            exit_reason = None
+    else:
+        exit_reason = None
 
-    # 执行平仓
     if exit_reason:
-        close_position(cst, token)
+        close_all_positions(cst, token)
         print(f"🚪 平仓原因: {exit_reason} | 价格: {current_price:.2f}")
 
-def close_position(cst, token):
-    """平仓函数"""
-    if not isinstance(trade_state.position, dict):
-        return
 
-    url = f"{BASE_URL}positions/otc"
-    payload = {
-        "dealId": trade_state.position["dealId"],
-        "direction": "SELL" if trade_state.position == "BUY" else "BUY",
-        "size": trade_state.position["size"],
-        "orderType": "MARKET"
-    }
-    response = requests.post(
-        url,
-        headers={"CST": cst, "X-SECURITY-TOKEN": token},
-        json=payload
-    )
+def close_all_positions(cst, security_token):
+    # 获取所有当前仓位
+    positions = get_all_positions(cst, security_token)
+    
+    if not positions:
+        print("⚠️ 无持仓可平")
+        return False
+    
+    headers = {"CST": cst, "X-SECURITY-TOKEN": security_token, "Content-Type": "application/json"}
+    success = True
+    
+    for item in positions:
+        position = item.get('position', {})
+        deal_id = position.get('dealId')
+        
+        if not deal_id:
+            print(f"❌ 未找到仓位的 dealId: {position}")
+            success = False
+            continue
+        
+        url = BASE_URL + f"positions/{deal_id}"
+        response = requests.delete(url, headers=headers)
+        
+        if response.status_code == 200:
+            print(f"🔵 成功平仓，dealId: {deal_id}")
+        else:
+            print(f"❌ 平仓失败 dealId {deal_id}: {response.text}")
+            success = False
+    
+    return success
+"""
+def get_positions(cst, security_token):
+    url = BASE_URL + "positions"
+    headers = {"CST": cst, "X-SECURITY-TOKEN": security_token, "Content-Type": "application/json"}
+    response = requests.get(url, headers=headers)
+    
     if response.status_code == 200:
-        print("✅ 平仓成功")
-        trade_state.reset()
+        return response.json().get('positions', [])
     else:
-        print("❌ 平仓失败:", response.json())
+        print(f"❌ 获取持仓信息失败: {response.text}")
+        return []
+
 
 def mta(cst, token):
+    if get_positions(cst, token):
+        print("🔵 当前已有持仓，跳过信号检查")
+        return
+
     df = get_market_data(cst, token, EPIC, RESOLUTION)
     if df is None:
         print("❌ K线数据为空，无法计算指标")
         return
 
     df = calculate_indicators(df)
-
-    # 检查现有持仓
-    if trade_state.position:
-        check_exit_conditions(cst, token,df)
-    else:
-        # 生成交易信号
-        signal = generate_signal(df)
-        if signal:
-            execute_trade(signal, cst, token,df)
+    if df is None:
+        return
+    
+    # 生成信号
+    signal = generate_signal(df)
+    if signal:
+        #trade_state.reset()
+        execute_trade(signal, cst, token, df)
