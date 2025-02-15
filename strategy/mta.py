@@ -255,10 +255,9 @@ def get_positions(cst, security_token):
         print(f"❌ 获取持仓信息失败: {response.text}")
         return []
 
-
 def mta(cst, token):
     if get_positions(cst, token):
-        print("🔵 当前已有持仓，跳过信号检查")
+        print("🟡 当前已有持仓，跳过信号检查")
         return
 
     df = get_market_data(cst, token, EPIC, RESOLUTION)
@@ -275,3 +274,4 @@ def mta(cst, token):
     if signal:
         #trade_state.reset()
         execute_trade(signal, cst, token, df)
+        
