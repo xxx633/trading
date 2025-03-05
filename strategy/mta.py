@@ -72,12 +72,12 @@ def calculate_position_size(current_price, account_balance):
     """根据风险比例计算头寸规模"""
     risk_amount = account_balance * 0.8
     contract_size = risk_amount / round(current_price, 1)
-
+    
     if contract_size < 1:
         print(f"⚠️ 计算的头寸规模 {contract_size} 小于最小交易规模 1")
         return 1
     
-    return round(contract_size)
+    return round(contract_size * 2)
 
 def generate_signal(df):
     """生成交易信号"""
@@ -118,11 +118,11 @@ def execute_trade(direction, cst, token, df):
         return
     
     if direction == "BUY":
-        #stop_loss = current_price - 0.024 - current_atr * STOP_MULTIPLIER
+        stop_loss = current_price - current_atr * STOP_MULTIPLIER
         #stop_loss = False
         initial_tp = current_price + 0.012 + current_atr * STOP_MULTIPLIER * 1.3
     else:
-        stop_loss = current_price + 0.024 + current_atr * STOP_MULTIPLIER
+        stop_loss = current_price + 0.012 + current_atr * STOP_MULTIPLIER
         initial_tp = current_price - 0.012 - current_atr * STOP_MULTIPLIER * 1.3
 
     order = {
@@ -130,13 +130,13 @@ def execute_trade(direction, cst, token, df):
         "direction": direction,
         "size": size,
         "orderType": "MARKET",
-        #"stopLevel": round(stop_loss, 3),
+        "stopLevel": round(stop_loss, 3),
         "profitLevel": round(initial_tp, 3),
         "guaranteedStop": False,
         "oco":True 
     }
-    if direction == "SELL":
-        order["stopLevel"] = round(stop_loss, 3)
+    #if direction == "SELL":
+        #order["stopLevel"] = round(stop_loss, 3)
 
     response = requests.post(
         f"{BASE_URL}positions",
