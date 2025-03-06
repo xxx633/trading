@@ -171,7 +171,7 @@ def execute_trade(direction, cst, token, df):
         trade_state.lowest = current_price if direction == "SELL" else None
         """
         if direction == "BUY":
-            print(f"✅ {direction} 数量: {size} | 买入价: {current_price+0.01:.2f} | 止盈: {initial_tp:.2f}")
+            print(f"✅ {direction} 数量: {size} | 买入价: {current_price+0.01:.2f} | 止损：{stop_loss:.2f} | 止盈: {initial_tp:.2f}")
         else:
             print(f"✅ {direction} 数量: {size} | 买出价: {current_price-0.01:.2f} | 止损: {stop_loss:.2f} | 止盈: {initial_tp:.2f}")
     else:
