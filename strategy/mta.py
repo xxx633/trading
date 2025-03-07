@@ -11,7 +11,7 @@ from config import *
 
 # 全局配置
 EPIC = "XRPUSD"        # 交易品种
-RESOLUTION = "HOUR"    # 交易周期
+RESOLUTION = "MINUTE_30"    # 交易周期
 ATR_PERIOD = 14        # ATR周期
 STOP_MULTIPLIER = 1.5  # 止损倍数
 
@@ -173,7 +173,7 @@ def execute_trade(direction, cst, token, df):
         if direction == "BUY":
             print(f"✅ {direction} 数量: {size} | 买入价: {current_price+0.01:.2f} | 止损：{stop_loss:.2f} | 止盈: {initial_tp:.2f}")
         else:
-            print(f"✅ {direction} 数量: {size} | 买出价: {current_price-0.01:.2f} | 止损: {stop_loss:.2f} | 止盈: {initial_tp:.2f}")
+            print(f"✅ {direction} 数量: {size} | 买出价: {current_price:.2f} | 止损: {stop_loss:.2f} | 止盈: {initial_tp:.2f}")
     else:
         print(f"❌ 订单失败: {response.status_code} - {response.text}")
 
