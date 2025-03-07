@@ -6,6 +6,14 @@ from server import run_server  # Flask 服务器
 from strategy import *
 from config import login
 
+def get_next_half_hour():
+    now = datetime.now()
+    if now.minute < 30:
+        next_time = now.replace(minute=30, second=5, microsecond=0)  # 进入下一半小时
+    else:
+        next_time = now.replace(minute=0, second=5, microsecond=0) + timedelta(hours=1)  # 进入下一小时整点
+
+    return next_time
 # 获取下一个小时的0分钟
 def get_next_minute():
     now = datetime.now()
@@ -43,7 +51,7 @@ async def run_trading():
                 await wait_until(9, 0)  # 跳过到 9:00 执行
             else:
                 # 获取下一个小时的 00 分钟
-                next_minute = get_next_minute()
+                next_minute = get_next_half_hour()
                 wait_seconds = (next_minute - datetime.now()).total_seconds()
                 await asyncio.sleep(wait_seconds)
             
