@@ -37,8 +37,8 @@ async def wait_until(target_hour, target_minute):
     await asyncio.sleep(wait_seconds)
 
 async def run_trading():   
-    trade_count = 0  # 初始化交易次数计数器
-    
+    #trade_count = 0  # 初始化交易次数计数器
+    start_time = get_next_half_hour()
     while True:
         try:
             now = datetime.now()
@@ -62,9 +62,16 @@ async def run_trading():
             #rsi_ema_macd(cst, security_token)
             #ema_trend(cst, security_token)
             mta(cst, security_token)
-        
-            print(f"⏳ 等待执行第{trade_count + 1}次交易交易")
-            trade_count += 1
+            
+            elapsed_time = datetime.now() - start_time
+            days = elapsed_time.days
+            hours = elapsed_time.seconds // 3600
+            minutes = (elapsed_time.seconds % 3600) // 60
+
+            # 打印格式化时间为 "xx天xx小时xx分钟"
+            print(f"⏳ 已运行 {days}天 {hours}小时 {minutes}分钟")
+            #print(f"⏳ 等待执行第{trade_count + 1}次交易交易")
+            #trade_count += 1
 
         except KeyboardInterrupt:
             print("\n🛑 交易中断，退出程序")
