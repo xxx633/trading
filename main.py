@@ -7,7 +7,7 @@ from strategy import *
 from config import login
 
 def get_next_half_hour():
-    now = datetime.now()
+    now = datetime.utcnow()
     if now.minute < 30:
         next_time = now.replace(minute=30, second=5, microsecond=0)  # 进入下一半小时
     else:
@@ -16,7 +16,7 @@ def get_next_half_hour():
     return next_time
 # 获取下一个小时的0分钟
 def get_next_minute():
-    now = datetime.now()
+    now = datetime.utcnow()
     # 获取下一个小时的 0 分钟
     next_minute = now.replace(minute=0, second=5, microsecond=0)
     
@@ -27,7 +27,7 @@ def get_next_minute():
     return next_minute
 
 async def wait_until(target_hour, target_minute):
-    now = datetime.now()
+    now = datetime.utcnow()
     target_time = now.replace(hour=target_hour, minute=target_minute, second=5, microsecond=0)
 
     if now >= target_time:
@@ -41,7 +41,7 @@ async def run_trading():
     start_time = get_next_half_hour()
     while True:
         try:
-            now = datetime.now()
+            now = datetime.utcnow()
             is_saturday = now.weekday() == 5  # 星期六 (0=星期一, 5=星期六)
 
             # 处理额外的交易时间：
@@ -52,7 +52,7 @@ async def run_trading():
             else:
                 # 获取下一个小时的 00 分钟
                 next_minute = get_next_half_hour()
-                wait_seconds = (next_minute - datetime.now()).total_seconds()
+                wait_seconds = (next_minute - datetime.utcnow()).total_seconds()
                 await asyncio.sleep(wait_seconds)
             
             # 登录并获取 CST 和 X-SECURITY-TOKEN
@@ -63,7 +63,7 @@ async def run_trading():
             #ema_trend(cst, security_token)
             mta(cst, security_token)
             
-            elapsed_time = datetime.now() - start_time
+            elapsed_time = datetime.utcnow() - start_time
             days = elapsed_time.days
             hours = elapsed_time.seconds // 3600
             minutes = (elapsed_time.seconds % 3600) // 60
