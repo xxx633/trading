@@ -45,10 +45,10 @@ async def run_trading():
             is_saturday = now.weekday() == 5  # 星期六 (0=星期一, 5=星期六)
 
             # 处理额外的交易时间：
-            if now.hour == 23 and now.minute < 5:  # 每天 23:05 额外触发
-                await wait_until(23, 5)
-            elif is_saturday and now.hour in [7, 8]:  # 星期六 7:00 和 8:00 跳过
-                await wait_until(9, 0)  # 跳过到 9:00 执行
+            if now.hour == 20 and now.minute == 30:  # 每天 23:05 额外触发
+                await wait_until(21, 5)
+            elif is_saturday and now.hour in [5, 6]:  # 星期六 7:00 和 8:00 跳过
+                await wait_until(7, 0)  # 跳过到 9:00 执行
             else:
                 # 获取下一个小时的 00 分钟
                 next_minute = get_next_half_hour()
