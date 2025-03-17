@@ -70,9 +70,21 @@ def calculate_indicators(df):
 
 def calculate_position_size(current_price, account_balance):
     """根据风险比例计算头寸规模"""
-    risk_amount = account_balance * 0.8
-    contract_size = risk_amount / round(current_price, 1)
+    rounded_price=round(current_price, 1)
     
+    if account_balance < 100:
+        available_funds=account_balance*0.8
+    else:
+        stage=0
+        threshold=100
+        while account_balance >= threshold*1.2:
+            stage+=1
+            threshold*=1.2
+
+        available_funds=80*(1.2**stage)
+
+    contract_size=available_funds/rounded_price
+        
     if contract_size < 1:
         print(f"⚠️ 计算的头寸规模 {contract_size} 小于最小交易规模 1")
         return 1
