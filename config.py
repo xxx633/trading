@@ -2,10 +2,10 @@ import requests
 import pandas as pd
 import time 
 import numpy as np
-
+import os
 # ======== 配置部分 ========
-API_KEY = "fekK4lw5TMmW9PXQ"
-CLIENT_IDENTIFIER = "vittoxiong@icloud.com"
+API_KEY = os.getenv('API')
+CLIENT_IDENTIFIER = os.getenv('EMAIL')
 PASSWORD = "Password2@123"
 BASE_URL = "https://demo-api-capital.backend-capital.com/api/v1/"
 MIN_SIZE=1
