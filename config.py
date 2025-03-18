@@ -16,6 +16,7 @@ def login():
     headers = {"X-CAP-API-KEY": API_KEY, "Content-Type": "application/json"}
     payload = {"identifier": CLIENT_IDENTIFIER, "password": PASSWORD, "encryptedPassword": False}
     
+    """
     response = requests.post(url, json=payload, headers=headers)
     if response.status_code == 200:
         print("✅ 登录成功！")
@@ -23,7 +24,30 @@ def login():
     else:
         print("❌ 登录失败:", response.json())
         exit()
+    """
+    
+    for attempt in range(1, 4):
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            
+            if response.status_code == 200:
+                print("✅ 登录成功！")
+                return response.headers["CST"], response.headers["X-SECURITY-TOKEN"]
+            else:
+                print(f"❌ 登录失败: {response.json()}")
+        
+        except requests.exceptions.RequestException as e:
+            print(f"❌ 请求错误: {e}")
 
+        # 如果不是第一次尝试，打印重试信息
+        if attempt < 3:
+            print(f"🔄 正在重试... {attempt}/3")
+            time.sleep(2)  # 等待2秒后重试
+        else:
+            print("⚠️ 达到最大重试次数，程序退出")
+            exit()
+            
+            
 # ======== 获取市场数据 ========
 def get_market_data(cst, security_token,epic,resolution):
     url = BASE_URL + f"prices/{epic}?resolution={resolution}&max=200"
