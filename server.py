@@ -18,7 +18,7 @@ def keep_awake():
         except Exception as e:
             print(f"Request failed: {e}")
         
-        time.sleep(1800)  # 每30分钟发送一次请求
+        time.sleep(900)  # 每30分钟发送一次请求
 
 def run_server():
     try:
