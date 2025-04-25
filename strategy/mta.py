@@ -10,8 +10,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from config import *
 
 # 全局配置
-EPIC = "XRPUSD"        # 交易品种
-RESOLUTION = "MINUTE_30"    # 交易周期
+EPIC = "XRPEUR"        # 交易品种
+RESOLUTION = "HOUR"    # 交易周期
 ATR_PERIOD = 14        # ATR周期
 STOP_MULTIPLIER = 1.5  # 止损倍数
 
@@ -130,12 +130,12 @@ def execute_trade(direction, cst, token, df):
         return
     
     if direction == "BUY":
-        stop_loss = current_price - current_atr * STOP_MULTIPLIER
+        stop_loss = current_price - 0.04
         #stop_loss = False
-        initial_tp = current_price + 0.012 + current_atr * STOP_MULTIPLIER * 1.3
+        initial_tp = current_price + 0.1
     else:
-        stop_loss = current_price + 0.012 + current_atr * STOP_MULTIPLIER
-        initial_tp = current_price - 0.012 - current_atr * STOP_MULTIPLIER * 1.3
+        stop_loss = current_price + 0.04
+        initial_tp = current_price - 0.1
 
     order = {
         "epic": EPIC,
