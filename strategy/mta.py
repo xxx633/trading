@@ -70,6 +70,7 @@ def calculate_indicators(df):
 
 def calculate_position_size(current_price, account_balance):
     """根据风险比例计算头寸规模"""
+    print(f"Account Balance: {account_balance}") 
     rounded_price=round(current_price, 1)
     
     if account_balance < 100:
