@@ -70,7 +70,6 @@ def calculate_indicators(df):
 
 def calculate_position_size(current_price, account_balance):
     """根据风险比例计算头寸规模"""
-    print(f"Account Balance: {account_balance}") 
     rounded_price=round(current_price, 1)
     
     if account_balance < 100:
@@ -269,6 +268,10 @@ def get_positions(cst, security_token):
         return []
 
 def mta(cst, token):
+    account = get_account_balance(cst,token)
+    account_balance=account["balance"]
+    print(f"Account Balance: {account_balance}") 
+    
     if get_positions(cst, token):
         print("🟡 当前已有持仓，跳过信号检查")
         return
