@@ -130,12 +130,12 @@ def execute_trade(direction, cst, token, df):
         return
     
     if direction == "BUY":
-        stop_loss = current_price - 0.04
+        stop_loss = current_price - current_atr * 1.5
         #stop_loss = False
-        initial_tp = current_price + 0.1
+        initial_tp = current_price + current_atr * 3
     else:
-        stop_loss = current_price + 0.04
-        initial_tp = current_price - 0.1
+        stop_loss = current_price + current_atr * 1.5
+        initial_tp = current_price - current_atr * 3
 
     order = {
         "epic": EPIC,
