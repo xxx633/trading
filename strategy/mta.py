@@ -270,7 +270,7 @@ def get_positions(cst, security_token):
 def mta(cst, token):
     account = get_account_balance(cst,token)
     account_balance=account["balance"]
-    print(f"Account Balance: {account_balance}") 
+    print(f"💰Account Balance: {account_balance}") 
     
     if get_positions(cst, token):
         print("🟡 当前已有持仓，跳过信号检查")
