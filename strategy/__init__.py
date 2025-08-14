@@ -3,3 +3,4 @@ from .ema_trend import *
 from .mta import *
 from .deepseek import *
 from .gpt import *
+from .mta2 import *
