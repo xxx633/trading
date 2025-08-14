@@ -11,7 +11,7 @@ from config import *
 
 # 全局配置
 EPIC = "XRPEUR"        # 交易品种
-RESOLUTION = "HOUR"    # 交易周期
+RESOLUTION = "30_MINUTE"    # 交易周期
 ATR_PERIOD = 14        # ATR周期
 STOP_MULTIPLIER = 1.5  # 止损倍数
 
@@ -44,8 +44,8 @@ def calculate_indicators(df):
     df["ema50"] = df["close"].ewm(span=50, adjust=False).mean()
 
     # MACD (12, 26, 9)
-    df["ema12"] = df["close"].ewm(span=12, adjust=False).mean()
-    df["ema26"] = df["close"].ewm(span=26, adjust=False).mean()
+    df["ema12"] = df["close"].ewm(span=13, adjust=False).mean()
+    df["ema26"] = df["close"].ewm(span=21, adjust=False).mean()
     df["macd"] = df["ema12"] - df["ema26"]
     df["signal"] = df["macd"].ewm(span=9, adjust=False).mean()
 
