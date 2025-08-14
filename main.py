@@ -61,7 +61,7 @@ async def run_trading():
             # 运行交易策略
             #rsi_ema_macd(cst, security_token)
             #ema_trend(cst, security_token)
-            gpt(cst, security_token)
+            mta2(cst, security_token)
             
             elapsed_time = datetime.now(timezone.utc) - start_time
             days = elapsed_time.days
