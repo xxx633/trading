@@ -40,7 +40,6 @@ def calculate_indicators(df):
                           np.abs(df['high'] - df['prev_close']),
                           np.abs(df['low'] - df['prev_close']))
     df['atr'] = df['tr'].rolling(ATR_PERIOD).mean()
-    df.drop(columns=['prev_close', 'tr'], inplace=True)
 
     # ADX (14)
     df['up_move'] = df['high'].diff()
@@ -53,7 +52,7 @@ def calculate_indicators(df):
     df['dx'] = 100 * np.abs(df['plus_di'] - df['minus_di']) / (df['plus_di'] + df['minus_di'])
     df['adx'] = df['dx'].rolling(14).mean()
     df.drop(columns=['up_move','down_move','plus_dm','minus_dm','tr14','plus_di','minus_di','dx'], inplace=True)
-
+    
     return df
 
 # === 仓位计算 ===
