@@ -62,7 +62,6 @@ def calculate_position_size(current_price, account_balance, atr, stop_multiplier
     if stop_distance == 0:
         stop_distance = 0.01
     size = risk_amount / stop_distance
-    size *= leverage
     return max(round(size, 2), 1)
 
 # === 信号生成 ===
