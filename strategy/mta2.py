@@ -10,9 +10,9 @@ from config import *
 
 # 全局配置
 EPIC = "XRPEUR"
-RESOLUTION = "MINUTE_30"
+RESOLUTION = "HOUR"
 ATR_PERIOD = 14
-STOP_MULTIPLIER = 1.5
+STOP_MULTIPLIER = 2
 
 # === 技术指标计算 ===
 def calculate_indicators(df):
