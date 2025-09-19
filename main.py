@@ -38,7 +38,7 @@ async def wait_until(target_hour, target_minute):
 
 async def run_trading():   
     #trade_count = 0  # 初始化交易次数计数器
-    start_time = get_next_minute()
+    start_time = get_next_half_hour()
     while True:
         try:
             now = datetime.now(timezone.utc)
@@ -51,7 +51,7 @@ async def run_trading():
                 await wait_until(7, 0)  # 跳过到 9:00 执行
             else:
                 # 获取下一个小时的 00 分钟
-                next_minute = get_next_minute()
+                next_minute = get_next_half_hour()
                 wait_seconds = (next_minute - datetime.now(timezone.utc)).total_seconds()
                 await asyncio.sleep(wait_seconds)
             
