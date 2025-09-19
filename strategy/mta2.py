@@ -79,14 +79,14 @@ def generate_signal(df):
     #     return None
 
     long_cond = (
-        last["close"] > last["ema50"] and
+        #last["close"] > last["ema50"] and
         last["rsi"] >= 50 and
         prev["macd"] <= prev["signal"] and
         last["macd"] > last["signal"]
     )
 
     short_cond = (
-        last["close"] < last["ema50"] and
+        #last["close"] < last["ema50"] and
         last["rsi"] <= 50 and
         prev["macd"] >= prev["signal"] and
         last["macd"] < last["signal"]
