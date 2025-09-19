@@ -10,7 +10,7 @@ from config import *
 
 # 全局配置
 EPIC = "XRPEUR"
-RESOLUTION = "HOUR"
+RESOLUTION = "MINUTE_30"
 ATR_PERIOD = 14
 STOP_MULTIPLIER = 2
 
