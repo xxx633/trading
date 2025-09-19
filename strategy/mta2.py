@@ -70,7 +70,7 @@ def generate_signal(df):
     prev = df.iloc[-2]
 
     # 趋势过滤
-    if last["adx"] < 25:
+    if last["adx"] < 20:
         return None
 
     # 可选成交量过滤
