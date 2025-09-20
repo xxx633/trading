@@ -17,7 +17,7 @@ itsdangerous==2.2.0
 Jinja2==3.1.5
 MarkupSafe==3.0.2
 multidict==6.1.0
-numpy==2.2.2
+numpy==2.2.6
 packaging==24.2
 pandas==2.2.3
 pandas_ta==0.4.71b0
