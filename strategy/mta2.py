@@ -30,12 +30,13 @@ def calculate_indicators(df):
     return df
 
 # === 仓位计算 ===
-def calculate_position_size(current_price, account_balance, atr, leverage=2):
-    risk_amount = account_balance
-    stop_distance = atr * STOP_MULTIPLIER
-    if stop_distance == 0:
-        stop_distance = 0.01
-    size = (risk_amount * leverage) / (stop_distance * current_price)
+def calculate_position_size(current_price, account_balance, leverage=2, capital_fraction=0.8):
+    # 只用账户资金的 80%
+    risk_amount = account_balance * capital_fraction
+    
+    # 用资金 * 杠杆 / 当前价格 得到可以买多少数量
+    size = (risk_amount * leverage) / current_price
+    
     return max(round(size, 2), 1)
 
 # === 信号生成（加入金叉/死叉） ===
