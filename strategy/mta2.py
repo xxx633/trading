@@ -30,14 +30,27 @@ def calculate_indicators(df):
     return df
 
 # === 仓位计算 ===
-def calculate_position_size(current_price, account_balance, leverage=2, capital_fraction=0.8):
-    # 只用账户资金的 80%
-    risk_amount = account_balance * capital_fraction
+def calculate_position_size(current_price, account_balance):
+    rounded_price=round(current_price, 1)
     
-    # 用资金 * 杠杆 / 当前价格 得到可以买多少数量
-    size = (risk_amount * leverage) / current_price
+    if account_balance < 100:
+        available_funds=account_balance*0.8
+    else:
+        stage=0
+        threshold=100
+        while account_balance >= threshold*1.2:
+            stage+=1
+            threshold*=1.2
+
+        available_funds=80*(1.2**stage)
+
+    contract_size=available_funds/rounded_price
+        
+    if contract_size < 1:
+        print(f"⚠️ 计算的头寸规模 {contract_size} 小于最小交易规模 1")
+        return 1
     
-    return max(round(size, 2), 1)
+    return round(contract_size * 2)
 
 # === 信号生成（加入金叉/死叉） ===
 def generate_signal(df):
@@ -65,7 +78,7 @@ def execute_trade(direction, cst, token, df):
     if not account:
         return
 
-    size = calculate_position_size(current_price, account["balance"], current_atr)
+    size = calculate_position_size(current_price, account["balance"])
 
     # 仅设定止盈，不设止损（stopLevel = None）
     if direction == "BUY":
