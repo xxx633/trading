@@ -13,7 +13,7 @@ from config import *
 EPIC = "XRPEUR"
 RESOLUTION = "HOUR"
 ATR_PERIOD = 14
-STOP_MULTIPLIER = 4
+STOP_MULTIPLIER = 3
 
 # === 技术指标计算 ===
 def calculate_indicators(df):
@@ -72,7 +72,7 @@ def execute_trade(direction, cst, token, df):
     # 仅设定止盈，不设止损（stopLevel = None）
     if direction == "BUY":
         initial_tp = current_price + current_atr * STOP_MULTIPLIER
-        stop_loss=current_price-current_atr*3
+        #stop_loss=current_price-current_atr*3
     else:
         initial_tp = current_price - current_atr * STOP_MULTIPLIER
 
@@ -82,7 +82,7 @@ def execute_trade(direction, cst, token, df):
         "size": size,
         "orderType": "MARKET",
         "profitLevel": round(initial_tp, 3),
-        "stopLevel": round(stop_loss,3),
+        "stopLevel": None,#round(stop_loss,3),
         "guaranteedStop": False,
         "oco": False         # 没有止损就不启用 OCO
     }
