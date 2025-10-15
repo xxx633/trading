@@ -10,10 +10,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from config import *
 
 # 全局配置
-EPIC = "XRPEUR"
+EPIC = "XRPUSD"
 RESOLUTION = "HOUR"
-ATR_PERIOD = 14
-STOP_MULTIPLIER = 3
+#ATR_PERIOD = 14
+#STOP_MULTIPLIER = 3
 
 # === 技术指标计算 ===
 def calculate_indicators(df):
@@ -33,13 +33,13 @@ def calculate_indicators(df):
 def calculate_position_size(current_price, account_balance):
     rounded_price=round(current_price, 1)
     
-    contract_size=account_balance/rounded_price
+    contract_size=(account_balance*0.67)/rounded_price
         
     if contract_size < 1:
         print(f"⚠️ 计算的头寸规模 {contract_size} 小于最小交易规模 1")
         return 1
     
-    return round(contract_size * 2)
+    return round(contract_size)
 
 # === 信号生成（加入金叉/死叉） ===
 def generate_signal(df):
@@ -71,7 +71,7 @@ def execute_trade(direction, cst, token, df):
 
     # 仅设定止盈，不设止损（stopLevel = None）
     if direction == "BUY":
-        initial_tp = current_price + current_atr * STOP_MULTIPLIER
+        initial_tp = current_price+0.09
         #stop_loss=current_price-current_atr*3
     else:
         initial_tp = current_price - current_atr * STOP_MULTIPLIER
