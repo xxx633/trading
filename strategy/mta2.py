@@ -12,7 +12,7 @@ from config import *
 # 全局配置
 EPIC = "XRPUSD"
 RESOLUTION = "HOUR"
-#ATR_PERIOD = 14
+ATR_PERIOD = 14
 #STOP_MULTIPLIER = 3
 
 # === 技术指标计算 ===
