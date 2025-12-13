@@ -6,6 +6,7 @@ from server import run_server  # Flask 服务器
 from strategy import *
 from config import login
 
+#半小时
 def get_next_half_hour():
     now = datetime.now(timezone.utc)
     if now.minute < 30:
@@ -14,11 +15,12 @@ def get_next_half_hour():
         next_time = now.replace(minute=0, second=5, microsecond=0) + timedelta(hours=1)  # 进入下一小时整点
 
     return next_time
+
 # 获取下一个小时的0分钟
 def get_next_minute():
     now = datetime.now(timezone.utc)
     # 获取下一个小时的 0 分钟
-    next_minute = now.replace(minute=0, second=5, microsecond=0)
+    next_minute = now.replace(minute=5, second=5, microsecond=0)
     
     # 如果当前时间已经过了 XX:01（例如 12:02, 12:10），则需要调整为下一个小时的 0 分钟
     if now >= next_minute:
@@ -37,20 +39,24 @@ async def wait_until(target_hour, target_minute):
     await asyncio.sleep(wait_seconds)
 
 async def run_trading():   
-    #trade_count = 0  # 初始化交易次数计数器
     start_time = get_next_minute()
     while True:
         try:
             now = datetime.now(timezone.utc)
-            is_saturday = now.weekday() == 5  # 星期六 (0=星期一, 5=星期六)
+            weekday = now.weekday()  # 星期六 (0=星期一, 5=星期六)
 
-            # 处理额外的交易时间：
-            if now.hour == 20 and now.minute == 30:  # 每天 23:05 额外触发
-                await wait_until(21, 5)
-            elif is_saturday and now.hour in [5, 6]:  # 星期六 7:00 和 8:00 跳过
-                await wait_until(7, 0)  # 跳过到 9:00 执行
+            if weekday in [5, 6]:  # Saturday or Sunday
+                # 等到下周一 00:05
+                days_until_monday = 7 - weekday
+                next_run = (now + timedelta(days=days_until_monday)).replace(hour=0, minute=5, second=5, microsecond=0)
+                wait_seconds = (next_run - now).total_seconds()
+                await asyncio.sleep(wait_seconds)
+            
+            elif 22 <= now.hour < 23:
+                await wait_until(23, 5)  # 23:05 继续
+
+            # 获取下一个小时的 00 分钟
             else:
-                # 获取下一个小时的 00 分钟
                 next_minute = get_next_minute()
                 wait_seconds = (next_minute - datetime.now(timezone.utc)).total_seconds()
                 await asyncio.sleep(wait_seconds)
@@ -59,8 +65,6 @@ async def run_trading():
             cst, security_token = login()
 
             # 运行交易策略
-            #rsi_ema_macd(cst, security_token)
-            #ema_trend(cst, security_token)
             mta2(cst, security_token)
             
             elapsed_time = datetime.now(timezone.utc) - start_time
@@ -70,8 +74,6 @@ async def run_trading():
 
             # 打印格式化时间为 "xx天xx小时xx分钟"
             print(f"⏳ 已运行 {days}天 {hours}小时 {minutes}分钟")
-            #print(f"⏳ 等待执行第{trade_count + 1}次交易交易")
-            #trade_count += 1
 
         except KeyboardInterrupt:
             print("\n🛑 交易中断，退出程序")
@@ -90,7 +92,6 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:
         print("\n🛑 主程序被手动中断，退出程序")
-
 
 
 """
