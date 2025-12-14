@@ -3,12 +3,12 @@ import pandas as pd
 import time 
 import numpy as np
 import os
+import json
 # ======== 配置部分 ========
-API_KEY = os.getenv('API')
-CLIENT_IDENTIFIER = os.getenv('EMAIL')
-PASSWORD = "Password2@123"
+API_KEY = "X3KnzHFyK7QVhpzm" #os.getenv('API')
+CLIENT_IDENTIFIER = "xiongvittorio@gmail.com"#os.getenv('EMAIL')
+PASSWORD="Password2@123"
 BASE_URL = "https://demo-api-capital.backend-capital.com/api/v1/"
-MIN_SIZE=1
 
 # ======== 登录函数 ========
 def login():
@@ -46,8 +46,7 @@ def login():
         else:
             print("⚠️ 达到最大重试次数，程序退出")
             exit()
-            
-            
+                      
 # ======== 获取市场数据 ========
 def get_market_data(cst, security_token,epic,resolution):
     url = BASE_URL + f"prices/{epic}?resolution={resolution}&max=200"
@@ -63,14 +62,15 @@ def get_market_data(cst, security_token,epic,resolution):
             data = response.json()["prices"]
             df = pd.DataFrame(data)
             df["timestamp"] = pd.to_datetime(df["snapshotTime"])
+            df["open"] = df["openPrice"].apply(lambda x: (x['bid'] + x['ask'])/2)
+            df["close"] = df["closePrice"].apply(lambda x: (x['bid'] + x['ask'])/2)
+            df["high"] = df["highPrice"].apply(lambda x: (x['bid'] + x['ask'])/2)
+            df["low"]  = df["lowPrice"].apply(lambda x: (x['bid'] + x['ask'])/2)
 
-            df["close"] = df["closePrice"].apply(lambda x: round(x["bid"], 3))
-            df["high"] = df["highPrice"].apply(lambda x: round(x["bid"], 3))
-            df["low"] = df["lowPrice"].apply(lambda x: round(x["bid"], 3))
-            #df["volume"] = df["lastTradedVolume"]
+            df["volume"] = df["lastTradedVolume"]
 
             # 只保留时间戳、收盘价、最高价和最低价，没有volume如需要可添加
-            return df[["timestamp", "close", "high", "low"]].set_index("timestamp")
+            return df[["timestamp", "open","close", "high", "low","volume"]].set_index("timestamp")
         except ValueError as e:
             print("❌ 解析 JSON 失败:", e)
             return None
@@ -112,7 +112,7 @@ def get_market_info(epic,cst, token):
     url = f"{BASE_URL}markets/{epic}"
     headers = {"CST": cst, "X-SECURITY-TOKEN": token}
     response = requests.get(url, headers=headers)
-    #print(json.dumps(response.json(), indent=4))
+    print(json.dumps(response.json(), indent=4))
     if response.status_code == 200:
         return response.json()
     else:
@@ -134,6 +134,19 @@ def get_deal_id(deal_ref, cst, token):
         time.sleep(0.5)
     return None
 
+def get_positions(cst, token):
+    url = BASE_URL + "positions"
+    headers = {"CST": cst, "X-SECURITY-TOKEN": token, "Content-Type": "application/json"}
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json().get('positions', [])
+    else:
+        print(f"❌ 获取持仓失败: {response.text}")
+        return []
 
 if __name__ == '__main__':
-    print(dynamic_position_sizing(2.5,0.033,200,36))
+    cst,token=login()
+    df=get_market_data(cst,token,"GOLD","HOUR")
+    print(df)
+
+

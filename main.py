@@ -1,10 +1,12 @@
-# 主程序
+"""
+# 主程序OK
 from threading import Thread
 import asyncio
 from datetime import datetime,timedelta,timezone
 from server import run_server  # Flask 服务器
-from strategy import *
-from config import login
+from gold import *
+from config import *
+
 
 #半小时
 def get_next_half_hour():
@@ -65,7 +67,8 @@ async def run_trading():
             cst, security_token = login()
 
             # 运行交易策略
-            mta2(cst, security_token)
+            
+            gold(cst, security_token,now.hour)
             
             elapsed_time = datetime.now(timezone.utc) - start_time
             days = elapsed_time.days
@@ -95,35 +98,81 @@ if __name__ == "__main__":
 
 
 """
+#TEST
 from threading import Thread
 import asyncio
 from server import run_server  # Flask 服务器
 from config import login
-from strategy import *
+from datetime import timedelta,timezone,datetime
+from gold import *
+from kriora import *
+
+
+async def align_first_run():
+    """等待到下一次 5 分钟倍数（05, 10, 15…）"""
+    now = datetime.now(timezone.utc)
+    # 下一个 5 分钟倍数
+    next_minute = (now.minute // 5 + 1) * 5
+    if next_minute >= 60:
+        # 跳到下一小时
+        next_hour = now.hour + 1
+        next_time = now.replace(hour=next_hour % 24, minute=0, second=0, microsecond=0)
+    else:
+        next_time = now.replace(minute=next_minute, second=0, microsecond=0)
+    wait_seconds = (next_time - now).total_seconds()
+    await asyncio.sleep(wait_seconds)
 
 async def run_trading():
-    trade_count = 0  # 初始化交易次数计数器
+    trade_count = 0
+    last_access_time = None
+    cst = token = None
+
+    # 首次对齐
+    await align_first_run()
+
     while True:
-        try:
-            cst, security_token = login()
-            
-            while True:        
-                # 运行交易策略
-                #普通
-                #ema_trend(cst, security_token)
+        now = datetime.now(timezone.utc)
 
-                mta(cst, security_token)
-                #deepseek(cst,security_token)
-                print(f"⏳ 等待 1 分钟后执行第{trade_count + 1}次交易...\n----------------------")
-                #等待下一次执行
-                await asyncio.sleep(60)
+        # 周末跳过
+        if now.weekday() >= 5:
+            print("🌙 周末休息，等待下周一...")
+            days_until_monday = 7 - now.weekday()
+            next_run = (now + timedelta(days=days_until_monday)).replace(hour=0, minute=5, second=0, microsecond=0)
+            last_access_time = None  # 周末结束后第一次访问必须重新登录
+            await asyncio.sleep((next_run - now).total_seconds())
+            continue
 
-                # 更新交易次数
-                trade_count += 1
+        # 每天 22-23 点休息
+        if 22 <= now.hour < 23:
+            print("🌙 每天 22-23 点休息，等待 23:05...")
+            next_run = now.replace(hour=23, minute=5, second=0, microsecond=0)
+            last_access_time = None  # 23 点后第一次访问必须重新登录
+            await asyncio.sleep((next_run - now).total_seconds())
+            continue
 
-        except KeyboardInterrupt:
-            print("\n🛑 交易中断，退出程序")
-            break
+        # 判断是否需要登录
+        need_login = False
+        if not last_access_time:
+            # 第一次访问或特殊情况
+            need_login = True
+        elif (now - last_access_time) > timedelta(minutes=15):
+            # 超过 15 分钟没访问
+            need_login = True
+
+        if need_login:
+            cst, token = login()
+            print(f"🔑 已登录，时间: {now.strftime('%H:%M:%S')}")
+
+        # 执行策略
+        kriora(cst, token)
+        trade_count += 1
+        print(f"⏳ 等待 5 分钟后执行第 {trade_count} 次交易...\n----------------------")
+
+        # 更新最后访问时间
+        last_access_time = datetime.now(timezone.utc)
+
+        # 等待 5 分钟
+        await asyncio.sleep(300)
 
 if __name__ == "__main__":
     try:
@@ -138,4 +187,3 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n🛑 主程序被手动中断，退出程序")
 
-"""
