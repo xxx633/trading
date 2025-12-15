@@ -74,7 +74,7 @@ def execute_trade(direction, cst, token, df):
         initial_tp = current_price+0.09
         #stop_loss=current_price-current_atr*3
     else:
-        initial_tp = current_price - current_atr * STOP_MULTIPLIER
+        initial_tp = current_price - current_atr * 2
 
     order = {
         "epic": EPIC,
@@ -98,16 +98,7 @@ def execute_trade(direction, cst, token, df):
     else:
         print(f"❌ 下单失败: {response.status_code} - {response.text}")
 
-# === 获取持仓 ===
-def get_positions(cst, token):
-    url = BASE_URL + "positions"
-    headers = {"CST": cst, "X-SECURITY-TOKEN": token, "Content-Type": "application/json"}
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return response.json().get('positions', [])
-    else:
-        print(f"❌ 获取持仓失败: {response.text}")
-        return []
+
 
 # === 主函数 ===
 def mta2(cst, token):

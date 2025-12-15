@@ -5,8 +5,8 @@ import numpy as np
 import os
 import json
 # ======== 配置部分 ========
-API_KEY = "X3KnzHFyK7QVhpzm" #os.getenv('API')
-CLIENT_IDENTIFIER = "xiongvittorio@gmail.com"#os.getenv('EMAIL')
+API_KEY = os.getenv('API')
+CLIENT_IDENTIFIER =os.getenv('EMAIL')
 PASSWORD="Password2@123"
 BASE_URL = "https://demo-api-capital.backend-capital.com/api/v1/"
 

@@ -37,7 +37,7 @@ def calculate_indicators(cst,token):
 
     return df
 
-def place_order(cst,token,signal,df):
+def place_order(cst,token,sig,df):
     current_atr = df["atr"].iloc[-1]
     current_price = df["close"].iloc[-1]
 
@@ -48,7 +48,7 @@ def place_order(cst,token,signal,df):
 
     size=calculate_position_size(current_price,account["balance"])
 
-    if signal == "BUY":
+    if sig == "BUY":
         tp = current_price + current_atr*3
         sl=current_price - current_atr*1.5
     else:
@@ -57,7 +57,7 @@ def place_order(cst,token,signal,df):
 
     order = {
         "epic": "GOLD",
-        "direction": signal,
+        "direction": sig,
         "size": size,
         "orderType": "MARKET",
         "profitLevel": tp,
@@ -73,7 +73,7 @@ def place_order(cst,token,signal,df):
     )
 
     if response.status_code == 200:
-        print(f"✅ {signal} 下单成功 | 数量: {size} | 价格: {current_price:.2f} | 止盈: {tp:.2f} | 止损: {sl:.2f}")
+        print(f"✅ {sig} 下单成功 | 数量: {size} | 价格: {current_price:.2f} | 止盈: {tp:.2f} | 止损: {sl:.2f}")
     else:
         print(f"❌ 下单失败: {response.status_code} - {response.text}")
 
@@ -106,6 +106,9 @@ def kriora(cst,token):
     if signal=="NO_TRADE":
         print("NO_Signal")
         return
-    else:
-        place_order(cst,token,signal,df)
+    elif signal=="BUY":
+        place_order(cst,token,"BUY",df)
+    elif signal=="SELL":
+        place_order(cst,token,"SELL",df)
+
     
