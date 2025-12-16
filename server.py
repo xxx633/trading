@@ -4,8 +4,10 @@ from flask import Flask
 from main import trading_loop
 import logging
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO,format="%(message)s")
 logger=logging.getLogger(__name__)
+
+
 
 app = Flask(__name__)
 
@@ -17,15 +19,13 @@ def root():
 def health():
     return "health ok", 200
 
+logger.info("🚀 程序启动了！")
 loop = asyncio.get_event_loop()
 loop.create_task(trading_loop())
+logger.info("🎯 交易循环已创建任务")
 
-"""
+
 if __name__ == "__main__":
-    # 新建事件循环
-    loop = asyncio.new_event_loop()
-    loop.create_task(trading_loop())
-
     # Windows 本地测试
     from threading import Thread
     # 关闭 debug reloader 防止 signal 错误
@@ -33,7 +33,6 @@ if __name__ == "__main__":
     t.start()
     # 运行事件循环
     loop.run_forever()
-"""
 
 
 

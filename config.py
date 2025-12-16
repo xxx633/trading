@@ -11,7 +11,7 @@ CLIENT_IDENTIFIER =os.getenv('EMAIL')
 PASSWORD="Password2@123"
 BASE_URL = "https://demo-api-capital.backend-capital.com/api/v1/"
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO,format="%(message)s")
 logger=logging.getLogger(__name__)
 
 class LoginError(Exception):
