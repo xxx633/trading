@@ -5,6 +5,11 @@ import pandas_ta as ta
 import numpy as np
 from config import *
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger=logging.getLogger(__name__)
+
 
 client = OpenAI(
     base_url="https://api.kriora.com/v1",
@@ -29,31 +34,24 @@ def calculate_indicators(cst,token):
     df['EMA169'] = ta.ema(df['close'], length=169)
     df['RSI14'] = ta.rsi(df['close'], length=14)
 
-    df['prev_close'] = df['close'].shift(1)
-    df['tr'] = np.maximum(df['high'] - df['low'],
-                          np.abs(df['high'] - df['prev_close']),
-                          np.abs(df['low'] - df['prev_close']))
-    df['atr'] = df['tr'].rolling(14).mean()
-
     return df
 
 def place_order(cst,token,sig,df):
-    current_atr = df["atr"].iloc[-1]
     current_price = df["close"].iloc[-1]
 
     account = get_account_balance(cst, token)
     if not account:
         return
-    print(f"💰 账户余额: {account['balance']}")
+    logger.info(f"💰 账户余额: {account['balance']}")
 
     size=calculate_position_size(current_price,account["balance"])
 
     if sig == "BUY":
-        tp = current_price + current_atr*3
-        sl=current_price - current_atr*1.5
+        tp = current_price + 5.87
+        sl=current_price - 5.87
     else:
-        tp = current_price - current_atr * 3
-        sl=current_price + current_atr*1.5
+        tp = current_price - 5.87
+        sl=current_price + 5.87
 
     order = {
         "epic": "GOLD",
@@ -73,13 +71,13 @@ def place_order(cst,token,sig,df):
     )
 
     if response.status_code == 200:
-        print(f"✅ {sig} 下单成功 | 数量: {size} | 价格: {current_price:.2f} | 止盈: {tp:.2f} | 止损: {sl:.2f}")
+        logger.info(f"✅ {sig} 下单成功 | 数量: {size} | 价格: {current_price:.2f} | 止盈: {tp:.2f} | 止损: {sl:.2f}")
     else:
-        print(f"❌ 下单失败: {response.status_code} - {response.text}")
+        logger.info(f"❌ 下单失败: {response.status_code} - {response.text}")
 
 def kriora(cst,token):
     if get_positions(cst, token):
-        print("🟡 当前已有持仓，跳过开仓信号")
+        logger.info("🟡 当前已有持仓，跳过开仓信号")
         return
 
     df=calculate_indicators(cst,token)
@@ -105,7 +103,7 @@ def kriora(cst,token):
     signal=completion.choices[0].message.content.strip()
 
     if signal=="NO_TRADE":
-        print("NO_SIGNAL")
+        logger.info("NO_SIGNAL")
         return
     elif signal=="BUY":
         place_order(cst,token,"BUY",df)

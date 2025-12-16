@@ -104,7 +104,10 @@ from config import login,LoginError
 from datetime import timedelta,timezone,datetime
 from gold import *
 from kriora import *
+import logging
 
+logging.basicConfig(level=logging.INFO)
+logger=logging.getLogger(__name__)
 
 async def align_first_run():
     """等待到下一次 5 分钟倍数（05, 10, 15…）"""
@@ -133,7 +136,7 @@ async def trading_loop():
 
         # 周末跳过
         if now.weekday() >= 5:
-            print("🌙 周末休息，等待下周一...")
+            logger.info("🌙 周末休息，等待下周一...")
             days_until_monday = 7 - now.weekday()
             next_run = (now + timedelta(days=days_until_monday)).replace(hour=0, minute=5, second=0, microsecond=0)
             last_access_time = None  # 周末结束后第一次访问必须重新登录
@@ -142,7 +145,7 @@ async def trading_loop():
 
         # 每天 22-23 点休息
         if 22 <= now.hour < 23:
-            print("🌙 每天 22-23 点休息，等待 23:05...")
+            logger.info("🌙 每天 22-23 点休息，等待 23:05...")
             next_run = now.replace(hour=23, minute=5, second=0, microsecond=0)
             last_access_time = None  # 23 点后第一次访问必须重新登录
             await asyncio.sleep((next_run - now).total_seconds())
@@ -161,15 +164,15 @@ async def trading_loop():
             try:
                 cst, token = login()
             except LoginError as e:
-                print(e)
+                logger.warning(e)
                 await asyncio.sleep(60)  # 等 1 分钟再重试
                 continue  # 继续下一轮循环
-            print(f"🔑 已登录，时间: {now.strftime('%H:%M:%S')}")
+            logger.info(f"🔑 已登录，时间: {now.strftime('%H:%M:%S')}")
 
         # 执行策略
         kriora(cst, token)
         trade_count += 1
-        print(f"⏳ 等待 5 分钟后执行第 {trade_count} 次交易...\n----------------------")
+        logger.info(f"⏳ 等待 5 分钟后执行第 {trade_count} 次交易...\n----------------------")
 
         # 更新最后访问时间
         last_access_time = datetime.now(timezone.utc)

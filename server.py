@@ -2,6 +2,10 @@
 import asyncio
 from flask import Flask
 from main import trading_loop
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger=logging.getLogger(__name__)
 
 app = Flask(__name__)
 

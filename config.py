@@ -4,12 +4,15 @@ import time
 import numpy as np
 import os
 import json
+import logging
 # ======== 配置部分 ========
 API_KEY = os.getenv('API')
 CLIENT_IDENTIFIER =os.getenv('EMAIL')
 PASSWORD="Password2@123"
 BASE_URL = "https://demo-api-capital.backend-capital.com/api/v1/"
 
+logging.basicConfig(level=logging.INFO)
+logger=logging.getLogger(__name__)
 
 class LoginError(Exception):
     """登录失败异常"""
@@ -25,17 +28,17 @@ def login():
             response = requests.post(url, json=payload, headers=headers)
             
             if response.status_code == 200:
-                print("✅ 登录成功！")
+                logger.info("✅ 登录成功！")
                 return response.headers["CST"], response.headers["X-SECURITY-TOKEN"]
             else:
-                print(f"❌ 登录失败: {response.json()}")
+                logger.warning(f"❌ 登录失败: {response.json()}")
         
         except requests.exceptions.RequestException as e:
-            print(f"❌ 请求错误: {e}")
+            logger.error(f"❌ 请求错误: {e}")
 
         # 如果不是最后一次尝试，打印重试信息
         if attempt < 3:
-            print(f"🔄 正在重试... {attempt}/3")
+            logger.info(f"🔄 正在重试... {attempt}/3")
             time.sleep(2)
         else:
             # 达到最大重试次数，抛出异常而不是 exit()
@@ -107,10 +110,10 @@ def get_market_data(cst, security_token,epic,resolution):
             # 只保留时间戳、收盘价、最高价和最低价，没有volume如需要可添加
             return df[["timestamp", "open","close", "high", "low","volume"]].set_index("timestamp")
         except ValueError as e:
-            print("❌ 解析 JSON 失败:", e)
+            logger.error("❌ 解析 JSON 失败:", e)
             return None
     else:
-        print("❌ 获取市场数据失败:", response.status_code)
+        logger.warning("❌ 获取市场数据失败:", response.status_code)
         return None  
 
 # ======== 获取账户余额 ======== 
@@ -136,9 +139,9 @@ def get_account_balance(cst, token):
                 "balance": float(balance_info.get("balance", 0.0)),
             }
         else:
-            print("❌ 获取账户余额失败: 账户列表为空")
+            logger.info("❌ 获取账户余额失败: 账户列表为空")
     else:
-        print(f"❌ 获取账户余额失败: {response.status_code} - {response.text}")
+        logger.info(f"❌ 获取账户余额失败: {response.status_code} - {response.text}")
 
     return None
 
@@ -147,11 +150,11 @@ def get_market_info(epic,cst, token):
     url = f"{BASE_URL}markets/{epic}"
     headers = {"CST": cst, "X-SECURITY-TOKEN": token}
     response = requests.get(url, headers=headers)
-    print(json.dumps(response.json(), indent=4))
+    logger.info(json.dumps(response.json(), indent=4))
     if response.status_code == 200:
         return response.json()
     else:
-        print(f"❌ 获取市场信息失败: {response.status_code} - {response.text}")
+        logger.info(f"❌ 获取市场信息失败: {response.status_code} - {response.text}")
         return None
 
 # ======== 获取仓位ID ========
@@ -176,7 +179,7 @@ def get_positions(cst, token):
     if response.status_code == 200:
         return response.json().get('positions', [])
     else:
-        print(f"❌ 获取持仓失败: {response.text}")
+        logger.info(f"❌ 获取持仓失败: {response.text}")
         return []
 
 if __name__ == '__main__':
