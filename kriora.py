@@ -4,7 +4,6 @@ import pandas as pd
 import pandas_ta as ta
 import numpy as np
 from config import *
-
 import logging
 
 logging.basicConfig(level=logging.INFO,format="%(message)s")

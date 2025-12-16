@@ -7,8 +7,6 @@ import logging
 logging.basicConfig(level=logging.INFO,format="%(message)s")
 logger=logging.getLogger(__name__)
 
-
-
 app = Flask(__name__)
 
 @app.route("/")
@@ -20,8 +18,11 @@ def health():
     return "health ok", 200
 
 logger.info("🚀 程序启动了！")
-loop = asyncio.get_event_loop()
+
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
 loop.create_task(trading_loop())
+
 logger.info("🎯 交易循环已创建任务")
 
 
@@ -33,7 +34,6 @@ if __name__ == "__main__":
     t.start()
     # 运行事件循环
     loop.run_forever()
-
 
 
 """
