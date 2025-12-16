@@ -25,7 +25,16 @@ loop.create_task(trading_loop())
 
 logger.info("🎯 交易循环已创建任务")
 
+def start_loop():
+    try:
+        loop.run_forever()
+    except RuntimeError:
+        pass  # 避免 Gunicorn 再次创建事件循环时报错
 
+import threading
+threading.Thread(target=start_loop, daemon=True).start()
+
+"""
 if __name__ == "__main__":
     # Windows 本地测试
     from threading import Thread
@@ -34,6 +43,7 @@ if __name__ == "__main__":
     t.start()
     # 运行事件循环
     loop.run_forever()
+"""
 
 
 """
