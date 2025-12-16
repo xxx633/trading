@@ -10,13 +10,47 @@ CLIENT_IDENTIFIER =os.getenv('EMAIL')
 PASSWORD="Password2@123"
 BASE_URL = "https://demo-api-capital.backend-capital.com/api/v1/"
 
-# ======== 登录函数 ========
+
+class LoginError(Exception):
+    """登录失败异常"""
+    pass
+
 def login():
     url = BASE_URL + "session"
     headers = {"X-CAP-API-KEY": API_KEY, "Content-Type": "application/json"}
     payload = {"identifier": CLIENT_IDENTIFIER, "password": PASSWORD, "encryptedPassword": False}
     
-    """
+    for attempt in range(1, 4):
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            
+            if response.status_code == 200:
+                print("✅ 登录成功！")
+                return response.headers["CST"], response.headers["X-SECURITY-TOKEN"]
+            else:
+                print(f"❌ 登录失败: {response.json()}")
+        
+        except requests.exceptions.RequestException as e:
+            print(f"❌ 请求错误: {e}")
+
+        # 如果不是最后一次尝试，打印重试信息
+        if attempt < 3:
+            print(f"🔄 正在重试... {attempt}/3")
+            time.sleep(2)
+        else:
+            # 达到最大重试次数，抛出异常而不是 exit()
+            raise LoginError("⚠️ 达到最大重试次数，登录失败")
+
+
+
+"""
+# ======== 登录函数 ========
+def old_login():
+    url = BASE_URL + "session"
+    headers = {"X-CAP-API-KEY": API_KEY, "Content-Type": "application/json"}
+    payload = {"identifier": CLIENT_IDENTIFIER, "password": PASSWORD, "encryptedPassword": False}
+    
+    ///
     response = requests.post(url, json=payload, headers=headers)
     if response.status_code == 200:
         print("✅ 登录成功！")
@@ -24,7 +58,7 @@ def login():
     else:
         print("❌ 登录失败:", response.json())
         exit()
-    """
+    ///
     
     for attempt in range(1, 4):
         try:
@@ -46,7 +80,8 @@ def login():
         else:
             print("⚠️ 达到最大重试次数，程序退出")
             exit()
-                      
+"""
+
 # ======== 获取市场数据 ========
 def get_market_data(cst, security_token,epic,resolution):
     url = BASE_URL + f"prices/{epic}?resolution={resolution}&max=200"

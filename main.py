@@ -100,7 +100,7 @@ if __name__ == "__main__":
 """
 #TEST
 import asyncio
-from config import login
+from config import login,LoginError
 from datetime import timedelta,timezone,datetime
 from gold import *
 from kriora import *
@@ -158,7 +158,12 @@ async def trading_loop():
             need_login = True
 
         if need_login:
-            cst, token = login()
+            try:
+                cst, token = login()
+            except LoginError as e:
+                print(e)
+                await asyncio.sleep(60)  # 等 1 分钟再重试
+                continue  # 继续下一轮循环
             print(f"🔑 已登录，时间: {now.strftime('%H:%M:%S')}")
 
         # 执行策略
