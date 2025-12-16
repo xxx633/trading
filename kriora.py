@@ -95,7 +95,7 @@ def kriora(cst,token):
                         {data_json}
                         Evaluate market structure, not price prediction.
                         Focus on EMA alignment, expansion vs compression, price location, RSI confirmation, and volume participation.
-                        Decide BUY , SELL , or NO_TRADE based on this data.
+                        Decide BUY, SELL, or NO_TRADE based on this data.
                         """}  
                     ],
         temperature=0

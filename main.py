@@ -99,9 +99,7 @@ if __name__ == "__main__":
 
 """
 #TEST
-from threading import Thread
 import asyncio
-from server import run_server  # Flask 服务器
 from config import login
 from datetime import timedelta,timezone,datetime
 from gold import *
@@ -122,7 +120,7 @@ async def align_first_run():
     wait_seconds = (next_time - now).total_seconds()
     await asyncio.sleep(wait_seconds)
 
-async def run_trading():
+async def trading_loop():
     trade_count = 0
     last_access_time = None
     cst = token = None
@@ -173,17 +171,4 @@ async def run_trading():
 
         # 等待 5 分钟
         await asyncio.sleep(300)
-
-if __name__ == "__main__":
-    try:
-        # 在新线程中运行 Flask 服务器
-        flask_thread = Thread(target=run_server)
-        flask_thread.daemon = True  
-        flask_thread.start()
-
-        # 启动交易
-        asyncio.run(run_trading())
-
-    except KeyboardInterrupt:
-        print("\n🛑 主程序被手动中断，退出程序")
 
