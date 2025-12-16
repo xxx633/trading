@@ -1,5 +1,4 @@
 # server.py
-import sys
 import asyncio
 from flask import Flask
 from main import trading_loop
@@ -14,30 +13,23 @@ def root():
 def health():
     return "health ok", 200
 
-# --- 启动后台交易循环 ---
-def start_background_loop(loop, coro):
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(coro)
+loop = asyncio.get_event_loop()
+loop.create_task(trading_loop())
 
+"""
 if __name__ == "__main__":
     # 新建事件循环
     loop = asyncio.new_event_loop()
     loop.create_task(trading_loop())
 
-    """
-    # 判断是否在 Koyeb / Linux
-    if "Koyeb" in sys.platform or "linux" in sys.platform.lower():
-        # 生产环境用 gunicorn，不在这里启动 Flask
-        pass
-    else:
-        # Windows 本地测试
-        from threading import Thread
-        # 关闭 debug reloader 防止 signal 错误
-        t = Thread(target=lambda: app.run(host="0.0.0.0", port=8000, debug=True, use_reloader=False), daemon=True)
-        t.start()
-        # 运行事件循环
-        loop.run_forever()
-    """
+    # Windows 本地测试
+    from threading import Thread
+    # 关闭 debug reloader 防止 signal 错误
+    t = Thread(target=lambda: app.run(host="0.0.0.0", port=8000, debug=True, use_reloader=False), daemon=True)
+    t.start()
+    # 运行事件循环
+    loop.run_forever()
+"""
 
 
 
