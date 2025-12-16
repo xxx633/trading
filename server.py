@@ -24,6 +24,7 @@ if __name__ == "__main__":
     loop = asyncio.new_event_loop()
     loop.create_task(trading_loop())
 
+    """
     # 判断是否在 Koyeb / Linux
     if "Koyeb" in sys.platform or "linux" in sys.platform.lower():
         # 生产环境用 gunicorn，不在这里启动 Flask
@@ -36,7 +37,7 @@ if __name__ == "__main__":
         t.start()
         # 运行事件循环
         loop.run_forever()
-
+    """
 
 
 

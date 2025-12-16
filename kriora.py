@@ -105,7 +105,7 @@ def kriora(cst,token):
     signal=completion.choices[0].message.content.strip()
 
     if signal=="NO_TRADE":
-        print("NO_Signal")
+        print("NO_SIGNAL")
         return
     elif signal=="BUY":
         place_order(cst,token,"BUY",df)
