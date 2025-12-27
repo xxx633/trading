@@ -97,11 +97,10 @@ if __name__ == "__main__":
         print("\n🛑 主程序被手动中断，退出程序")
 
 """
-#TEST
+#SHORT
 import asyncio
 from config import login,LoginError
 from datetime import timedelta,timezone,datetime
-from gold import *
 from kriora import *
 import logging
 
@@ -123,7 +122,7 @@ async def align_first_run():
     await asyncio.sleep(wait_seconds)
 
 async def trading_loop():
-    trade_count = 0
+    trade_count = 1
     last_access_time = None
     cst = token = None
 
@@ -142,11 +141,21 @@ async def trading_loop():
             await asyncio.sleep((next_run - now).total_seconds())
             continue
 
+        """
         # 每天 22-23 点休息
         if 22 <= now.hour < 23:
             logger.info("🌙 每天 22-23 点休息，等待 23:05...")
             next_run = now.replace(hour=23, minute=5, second=0, microsecond=0)
             last_access_time = None  # 23 点后第一次访问必须重新登录
+            await asyncio.sleep((next_run - now).total_seconds())
+            continue
+        """
+
+        if now.hour >= 21:
+            logger.info("🌙 每天 21:00–00:00 休息，等待 00:05...")
+            # 等到第二天 00:05
+            next_run = (now + timedelta(days=1)).replace(hour=0, minute=5, second=0, microsecond=0)
+            last_access_time = None  # 00 点后第一次访问必须重新登录
             await asyncio.sleep((next_run - now).total_seconds())
             continue
 
@@ -169,7 +178,13 @@ async def trading_loop():
             logger.info(f"🔑 已登录，时间: {now.strftime('%H:%M:%S')}")
 
         # 执行策略
-        kriora(cst, token)
+        result=kriora(cst, token)
+
+        if result is None:
+            logger.warning("⚠️ AI 本轮不可用，跳过本次交易")
+            await asyncio.sleep(300)
+            continue
+        
         trade_count += 1
         logger.info(f"⏳ 等待 5 分钟后执行第 {trade_count} 次交易...\n----------------------")
 
