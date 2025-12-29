@@ -99,7 +99,7 @@ def place_order(cst,token,sig,df):
 def kriora(cst,token):
     if get_positions(cst, token):
         logger.info("🟡 当前已有持仓，跳过开仓信号")
-        return
+        return True
 
     df=calculate_indicators(cst,token)
 
