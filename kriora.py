@@ -103,7 +103,7 @@ def kriora(cst,token):
 
     df=calculate_indicators(cst,token)
 
-    recent_df=df.tail(30)
+    recent_df=df.tail(21)
     features = recent_df[['open', 'high', 'low', 'close', 'volume', 'EMA13', 'EMA21','EMA144', 'EMA169', 'RSI14']]
     data_json = features.to_dict(orient="records")
     data_json_str = json.dumps(data_json)
@@ -111,13 +111,13 @@ def kriora(cst,token):
     USER_PROMT=f"""Timeframe:5-minute
 Trading instrument:XAUUSD
 Indicators:EMA 13,21,144,169, RSI 14
-Latest 30 OHLCV candles:
+Latest 21 OHLCV candles:
 {data_json_str}
 Decide BUY, SELL, or NO_TRADE based on this data."""
     
     try:
         completion = client.chat.completions.create(
-            model="deepseek/deepseek-v3.2-speciale",
+            model="deepseek/deepseek-v3-0324",
             messages = [{"role": "system","content":SYSTEM_PROMT},
                         {"role": "user","content":USER_PROMT}],
             temperature=0
