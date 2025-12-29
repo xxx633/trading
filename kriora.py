@@ -136,8 +136,9 @@ Decide BUY, SELL, or NO_TRADE based on this data."""
     """
     if signal=="NO_TRADE":
         logger.info("NO_SIGNAL")
-        return
+        return True
     else:
         place_order(cst,token,signal,df)
+        return True
 
     
