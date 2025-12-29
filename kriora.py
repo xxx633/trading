@@ -117,7 +117,7 @@ Decide BUY, SELL, or NO_TRADE based on this data."""
     
     try:
         completion = client.chat.completions.create(
-            model="deepseek/deepseek-r1-0528",
+            model="deepseek/deepseek-v3.2-speciale",
             messages = [{"role": "system","content":SYSTEM_PROMT},
                         {"role": "user","content":USER_PROMT}],
             temperature=0
