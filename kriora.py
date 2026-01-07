@@ -68,11 +68,11 @@ def place_order(cst,token,sig,df):
     size=1
 
     if sig == "BUY":
-        tp = current_price + 3.3
-        sl=current_price - 5.7
+        tp = current_price + 5
+        sl=current_price - 10
     else:
-        tp = current_price - 3.3
-        sl=current_price + 5.7
+        tp = current_price - 5
+        sl=current_price + 10
 
     order = {
         "epic": "GOLD",
@@ -117,7 +117,7 @@ Decide BUY, SELL, or NO_TRADE based on this data."""
     
     try:
         completion = client.chat.completions.create(
-            model="deepseek/deepseek-v3-0324",
+            model="minimax/minimax-m2.1",
             messages = [{"role": "system","content":SYSTEM_PROMT},
                         {"role": "user","content":USER_PROMT}],
             temperature=0
