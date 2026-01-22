@@ -68,11 +68,11 @@ def place_order(cst,token,sig,df):
     size=1
 
     if sig == "BUY":
-        tp = current_price + 3
-        sl=current_price - 9
+        tp = current_price + 2
+        sl=current_price - 5
     else:
-        tp = current_price - 3
-        sl=current_price + 9
+        tp = current_price - 2
+        sl=current_price + 5
 
     order = {
         "epic": "GOLD",
